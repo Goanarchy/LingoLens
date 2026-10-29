@@ -136,6 +136,12 @@ export default function ProfileScreen() {
                   <Text style={styles.wordText}>{entry.object}</Text>
                 </View>
               ))}
+              <GhostButton
+                label="Abrir biblioteca"
+                icon="albums-outline"
+                onPress={() => router.push('/library')}
+                style={styles.libraryButton}
+              />
             </View>
           )}
         </View>
@@ -429,6 +435,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 12,
     fontWeight: '600',
+  },
+  libraryButton: {
+    marginTop: spacing.md,
+    alignSelf: 'stretch',
   },
   languageCard: {
     backgroundColor: colors.card,

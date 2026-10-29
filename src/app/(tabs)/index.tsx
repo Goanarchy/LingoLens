@@ -17,10 +17,15 @@ import {
 
 import { Screen } from '@/components/Screen';
 import { Chip, IconButton, PrimaryButton } from '@/components/ui';
+import { CATALOG } from '@/lib/demoCatalog';
 import { prepareImage } from '@/lib/image';
 import { LANGUAGES } from '@/lib/languages';
+import { speakWord } from '@/lib/tts';
 import { useAppStore } from '@/store/useAppStore';
 import { absoluteFill, colors, radius, spacing } from '@/theme';
+
+const DAILY = CATALOG[Math.floor(Date.now() / 86_400_000) % CATALOG.length];
+const DAILY_EN = DAILY.translations.find((entry) => entry.code === 'en');
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -34,6 +39,15 @@ export default function ScanScreen() {
   const setPendingScan = useAppStore((state) => state.setPendingScan);
   const offlineMode = useAppStore((state) => state.offlineMode);
   const streak = useAppStore((state) => state.stats.streak);
+  const countAudio = useAppStore((state) => state.countAudio);
+
+  function handleDailyWord() {
+    if (Platform.OS !== 'web') {
+      Haptics.selectionAsync().catch(() => undefined);
+    }
+    countAudio();
+    speakWord(DAILY_EN?.word ?? DAILY.object, 'en').catch(() => undefined);
+  }
 
   async function handleCapture() {
     if (busy) return;
@@ -214,6 +228,18 @@ export default function ScanScreen() {
           ))}
         </View>
       </View>
+
+      <Pressable
+        onPress={handleDailyWord}
+        accessibilityRole="button"
+        accessibilityLabel={`Palabra del día: ${DAILY.object} en inglés, ${DAILY_EN?.word ?? ''}`}
+        style={({ pressed }) => [styles.daily, { opacity: pressed ? 0.7 : 1 }]}>
+        <Text style={styles.dailyLabel}>PALABRA DEL DÍA</Text>
+        <Text style={styles.dailyWord} numberOfLines={1}>
+          {DAILY.emoji} {DAILY.object} · {DAILY_EN?.word ?? ''}
+        </Text>
+        <Ionicons name="volume-medium" size={16} color={colors.accent} />
+      </Pressable>
 
       <View style={styles.controls}>
         <IconButton
@@ -468,6 +494,32 @@ const styles = StyleSheet.create({
   },
   flag: {
     fontSize: 15,
+  },
+  daily: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  dailyLabel: {
+    color: colors.textDim,
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 1.1,
+  },
+  dailyWord: {
+    flex: 1,
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
   controls: {
     flexDirection: 'row',

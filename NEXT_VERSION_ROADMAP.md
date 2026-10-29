@@ -1,81 +1,62 @@
-# Next Version — Roadmap & Backlog (v1.1.0)
+# Next Version — Roadmap & Backlog
 
 **LingoLens — One photo, five languages**
 
-This document lists candidate improvements for the next release. The version number is assigned based on the final scope:
+Current release: **v1.1.0 "Learning Loop"**. This document tracks what shipped and what comes next.
+
+Scope and version number are decided together:
 
 - **PATCH (1.0.x):** fixes only, no new features.
-- **MINOR (1.1.0):** batch of backwards-compatible features and improvements.
-- **MAJOR (2.0.0):** deep architecture or experience change (real backend, redesign, new modes).
+- **MINOR (1.1.0):** batch of compatible features.
+- **MAJOR (2.0.0):** architecture or experience change (real backend, redesign, new modes).
+
+Market context and competitor analysis: [MARKET_RESEARCH.md](./MARKET_RESEARCH.md).
 
 ---
 
-## Proposed improvements
+## v1.1.0 — "Learning Loop" (shipped)
 
-### P1 · Discovery history and search
-**Impact:** high · **Effort:** medium
+The research is consistent: identifying objects is the hook, but **retention comes from reviewing what you collected**. Every direct competitor paywalls the scan after 2–5 uses; LingoLens keeps it unlimited and free, and wins on practice, personality and polish.
 
-- Screen with every saved word: object, emoji, category, date and the 5 languages.
-- Text search plus filtering by language/category.
-- Play audio from the history and mark favorites.
-- Clear history with confirmation.
+### Wave 1 — Shipped in v1.1.0
 
-### P2 · Brand identity (icon, splash and store assets)
-**Impact:** high · **Effort:** low
+| # | Feature | Why | Free / Expo Go implementation |
+|---|---|---|---|
+| W1 | **First-run intro** (3 screens + demo scan before the camera permission) | Competitors lose users at permission and paywall walls | Static onboarding route, `expo-localization` for the default language, local flag in the store |
+| W2 | **Original mascot** drawn in code | Duolingo proves personality drives return; no licensing cost | `react-native-svg` + Reanimated 4; zero binary assets |
+| W3 | **Library with search, filters and favorites** | A collection you cannot search is not a collection | New `/library` route over the existing `learned` array |
+| W4 | **Spaced-repetition review (flashcards)** | Turns scanning into retention | Local scheduler (SM-2-lite) in `lib/srs.ts`; 3 grade buttons; XP and streak-safe |
+| W5 | **Shareable word card** | Free growth loop, no accounts | `react-native-view-shot` + `expo-sharing` (both in Expo Go) |
+| W6 | **Daily word + haptics** | Gives the camera a reason today; tactile feedback | Deterministic local pick from the catalog, `expo-haptics` |
+| W7 | **Accessibility pass** | Rare in this category, free to add | Accessibility labels, dynamic type, reduced-motion support |
+| W8 | **CI + tests** | Keeps the repo trustworthy | GitHub Actions (`tsc`, lint, doctor) + Jest for XP/ranks/SRS |
 
-- Final icon (lens + language bubble) in every Android/iOS size.
-- Splash screen consistent with the brand.
-- Store listing: name, short description and screenshots for a future release.
+### Wave 2 — v1.2.0 candidates
 
-### P3 · Daily review with flashcards
-**Impact:** high · **Effort:** high
+- Pronunciation coach: slow/normal playback, syllable emphasis, record-and-compare (`expo-audio`).
+- Opt-in local daily reminder (`expo-notifications`, local only, capped, quiet hours).
+- Export/import progress (`expo-file-system` + `expo-document-picker` + `expo-sharing`).
+- Brand identity: final icon and splash.
+- Language selection from 2 to 10.
+- Themed weekly scan challenges.
 
-- Review session using saved words (5, 10 or 15 cards).
-- Simple spaced repetition: "again", "good", "easy".
-- Bonus XP and streak when the review is completed.
-- Summary with correct answers and words to reinforce.
+### Wave 3 — v2.0.0 candidates
 
-### P4 · Share card as an image
-**Impact:** high · **Effort:** medium
+- Shared feed with a real backend (Supabase free tier, anonymous auth).
+- Server-side XP validation and moderation.
+- Signed APK/AAB via EAS Build.
 
-- Generate a polished image with the photo, the object and the 5 languages.
-- Share via WhatsApp, Instagram or save to the gallery.
-- Requires `expo-sharing` plus view capture; validate Expo Go compatibility.
+### Not possible in Expo Go (documented, not bugs)
 
-### P5 · Onboarding and explained permissions
-**Impact:** medium · **Effort:** low
+- Android home-screen widget — requires a development build.
+- On-device ML Kit labeling/translation — requires a development build.
+- Exact-time alarms on Android 12+ — requires a manifest change.
 
-- 3 intro screens: what it does, how to scan and privacy.
-- Explanation before the camera permission plus a "try a sample photo" button.
-- Shown only the first time, with a skip option.
+---
 
-### P6 · Language selection (2 to 10)
-**Impact:** medium · **Effort:** medium
+## Naming
 
-- Choose active languages in Settings; the app adapts to that list.
-- Per-language ranks only for active languages.
-- Validate the AI prompt with variable lists.
-
-### P7 · Export and import progress
-**Impact:** medium · **Effort:** low
-
-- Export words, XP, badges and posts to a JSON file.
-- Import on another phone to keep your progress.
-- Requires `expo-file-system` and `expo-sharing`.
-
-### P8 · Quality and repository CI
-**Impact:** medium · **Effort:** medium
-
-- GitHub Actions: `tsc`, `expo lint` and `expo-doctor` on every push.
-- Unit tests for gamification (XP, ranks, badges) and AI normalization.
-- Issue and pull request templates.
-
-### P9 · Shared feed with a real backend (v2.0.0 candidate)
-**Impact:** very high · **Effort:** very high
-
-- Supabase (free tier): anonymous auth, posts table, likes and image storage.
-- Basic moderation and posting limits.
-- Replaces the local feed; keeps offline mode.
+Several App Store apps already use "LingoLens", at least one with the same camera→object→languages concept. Before any store submission the name should be changed or qualified; the GitHub repository can keep its current name meanwhile.
 
 ---
 
@@ -84,6 +65,6 @@ This document lists candidate improvements for the next release. The version num
 | Scope | Version |
 |---|---|
 | Fixes for 1.0.0 only | 1.0.1 |
-| P1 + P2 + P5 + P8 (recommended batch) | 1.1.0 |
-| P1 + P2 + P3 + P4 + P5 | 1.1.0 |
-| Includes P9 (backend) | 2.0.0 |
+| Wave 1 (intro, mascot, library, review, share, daily word, accessibility, CI) | 1.1.0 |
+| Wave 1 + Wave 2 | 1.2.0 |
+| Includes Wave 3 (backend) | 2.0.0 |

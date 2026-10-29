@@ -15,7 +15,9 @@ export default function RootLayout() {
           animation: 'slide_from_right',
         }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
         <Stack.Screen name="result" options={{ animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="review" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="settings" />
       </Stack>
     </SafeAreaProvider>

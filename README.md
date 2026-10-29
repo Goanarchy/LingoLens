@@ -1,28 +1,35 @@
 # LingoLens
 
-**One photo, five languages.** Point the camera at any object: LingoLens identifies it and shows its name in Spanish, English, French, German and Italian, with written pronunciation and audio. Earn XP, level up, unlock badges and share your discoveries with the community.
+**One photo, five languages.** Point the camera at any object: LingoLens identifies it and shows its name in Spanish, English, French, German and Italian, with written pronunciation and audio. Save it, review it with spaced repetition, share a card and learn with Kamu, the mascot.
 
 Mobile app built with **Expo SDK 58 + React Native 0.88 + TypeScript**.
 
 **100% free — no accounts, no logins, no API keys.**
 
-**Version:** 1.0.0 · **Repository:** [github.com/Goanarchy/LingoLens](https://github.com/Goanarchy/LingoLens) · **Changelog:** [RELEASE_NOTES.md](./RELEASE_NOTES.md)
+**Version:** 1.1.0 · **Repository:** [github.com/Goanarchy/LingoLens](https://github.com/Goanarchy/LingoLens) · **Changelog:** [RELEASE_NOTES.md](./RELEASE_NOTES.md)
 
 ---
 
 ## What already works
 
+- 🎬 **First-run intro**: three short steps that explain the flow and preview the mascot before the camera permission is requested.
+- 🦎 **Kamu, the original mascot**: a one-eyed chameleon drawn in SVG, with five moods, language-based colors and reduced-motion support. It appears while the photo is analyzed with a *“What the heck is this?”* face, pointing at the object.
 - 📷 **Live camera** (expo-camera) with **gallery** as a fallback.
 - 🧠 **Free, keyless vision AI**: open models from OVHcloud AI Endpoints (Qwen2.5-VL 72B and fallbacks), with automatic model rotation.
 - 🛟 **Never blocked**: if the free AI fails or is rate-limited, the app falls back to a local catalog of 18 objects and tells you clearly.
 - 🗣️ **Real audio** in all 5 languages using the device voice (expo-speech), at no cost.
 - 🔤 **Written pronunciation** under every word (e.g. `/man-SAH-nah/`) plus article and example sentence.
+- 📚 **Library** with search across the five languages, category filters, favorites and per-word audio.
+- 🧠 **Spaced-repetition review**: up to 10 flashcards per session, three grades (Again / Good / Easy) and an SM-2-lite scheduler.
+- 🖼️ **Shareable word card**: a branded PNG generated on the device and sent to the system share sheet.
+- ☀️ **Word of the day** with one-tap audio and haptics.
 - ⭐ **XP, 7 global ranks** (Curious → Legend) and an **independent rank per language** (Beginner → Master).
 - 🏅 **12 badges** that unlock based on your real progress.
 - 🔥 **Daily streak** and statistics (words, languages, audios, streak).
 - 🌍 **Social feed** with posts, likes and your own discoveries.
 - 💾 **Local persistence** (AsyncStorage): your progress survives app restarts.
 - 📱 **Optimized for large photos**: downscales to 1024 px before upload (key on the Pixel 9 Pro XL, which shoots 50 MP photos).
+- ♿ **Accessibility**: screen-reader labels, system font scaling and reduced-motion support.
 
 ---
 
@@ -60,11 +67,12 @@ A **QR code** appears in the terminal.
 
 ### 4. First run
 
-1. Accept the **camera** permission.
+1. Complete the **3-step intro** (or tap **Skip**). The camera permission is only requested when you take a photo.
 2. Point at an object with good light and press the white shutter button.
-3. The app compresses the photo, analyzes it and shows the 5 cards.
+3. Kamu appears while the photo is analyzed, then the app shows the 5 cards.
 4. Tap the **speaker** on any language to hear the pronunciation.
-5. Press **Save word** to earn XP and **Share to feed**.
+5. Press **Save word** to earn XP, then **Share card** to export a PNG or **Share to feed**.
+6. Open **Library** to search, filter and favorite your words, and **Review** to practice with spaced repetition.
 
 ### 5. Audio in the 5 languages (important on Android)
 
@@ -125,14 +133,17 @@ Photo → downscale to 1024 px JPEG → OVHcloud AI Endpoints (anonymous, no key
 src/
   app/                      # Routes (Expo Router)
     _layout.tsx             # Root stack + SafeArea
+    welcome.tsx             # 3-step first-run intro with Kamu
     (tabs)/
-      _layout.tsx           # Tabs: Scan / Community / Profile
-      index.tsx             # Camera, gallery and photo compression
+      _layout.tsx           # Tabs: Scan / Library / Community / Profile
+      index.tsx             # Camera, gallery, daily word and photo compression
+      library.tsx           # Search, filters, favorites and share cards
       feed.tsx              # Local social feed
       profile.tsx           # Rank, stats, languages, badges
-    result.tsx              # Identification + 5 cards + XP + fallback notice
+    result.tsx              # Identification + 5 cards + Kamu + share card
+    review.tsx              # Spaced-repetition flashcards
     settings.tsx            # Name, free AI, voice diagnostics, reset
-  components/               # Reusable UI (Screen, WordCard, PostCard…)
+  components/               # Reusable UI (Screen, WordCard, Kamu, ShareCard…)
   data/seed.ts              # Sample posts
   lib/
     vision.ts               # Keyless free AI + cascade + demo fallback
@@ -140,6 +151,8 @@ src/
     demoCatalog.ts          # 18 objects with translations and phonetics
     languages.ts            # The 5 languages and their TTS voices
     gamification.ts         # Ranks, per-language ranks, badges, XP
+    kamu.ts                 # Mascot colors and lines
+    srs.ts                  # SM-2-lite spaced-repetition scheduler
     tts.ts                  # System voices + diagnostics
     types.ts
   store/useAppStore.ts      # Global state (zustand + persist)
@@ -149,8 +162,9 @@ src/
 ### How progress is calculated
 
 - Saving a new word: **+12 XP + 2 XP per language** (22 XP with 5 languages).
+- Reviewing a card: **+1 XP** (Again), **+4 XP** (Good) or **+6 XP** (Easy).
 - First post: **+15 XP**; subsequent posts: **+6 XP**.
-- Streak: increases when you save a word on consecutive days.
+- Streak: increases when you save or review a word on consecutive days.
 - Badges: evaluated after every action (words, languages, audios, posts, streak, XP).
 
 | Rank | XP |
@@ -185,6 +199,7 @@ npx expo export --platform android     # validate the bundle
 - The feed and profiles are **local**: no accounts and no shared server.
 - The free AI service allows 2 requests/minute per IP and may be saturated.
 - TTS depends on the voices installed on the phone.
+- Review scheduling is stored locally; it does not sync between devices.
 - The icon is still the Expo placeholder.
 
 **Turning it into a real product:** Supabase backend (auth + posts + storage), a proxy for the AI with rate limiting, feed moderation, server-side XP validation and `eas build`/`eas submit`. No Android Studio or Xcode required.

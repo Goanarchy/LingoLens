@@ -1,8 +1,8 @@
 # LingoLens — Quick Start Guide
 
-**Version 1.0.0** · [github.com/Goanarchy/LingoLens](https://github.com/Goanarchy/LingoLens)
+**Version 1.1.0** · [github.com/Goanarchy/LingoLens](https://github.com/Goanarchy/LingoLens)
 
-Point the camera at an object: LingoLens identifies it and shows its name in Spanish, English, French, German and Italian, with written pronunciation and audio.
+Point the camera at an object: LingoLens identifies it and shows its name in Spanish, English, French, German and Italian, with written pronunciation and audio. Save it to your library, review it with spaced repetition and share a card.
 
 ---
 
@@ -35,7 +35,7 @@ When the QR code appears in the terminal:
 
 1. Open **Expo Go** on your phone.
 2. Scan the QR code (Android: "Scan QR code" button; iOS: the system camera).
-3. Accept the camera permission.
+3. Complete the 3-step intro. The camera permission is requested only when you take the first photo.
 
 > If the QR code does not connect, make sure the phone and PC are on the same Wi-Fi and that the firewall allows Node.js. On Windows you can also run `npm start -- --tunnel`.
 
@@ -43,13 +43,16 @@ When the QR code appears in the terminal:
 
 ## 3. How to use it
 
-1. **Scan** → tap the camera button, frame an object and capture.
-2. **Result** → the app shows the object, its emoji, category and the 5 languages.
-3. **Listen** → tap the audio icon on any language to hear the pronunciation.
-4. **Save** → save the word to your history and earn XP.
-5. **Publish** → share the discovery in the local community feed.
-6. **Profile** → check XP, global rank, per-language ranks, streak and badges.
-7. **Settings** → offline mode, AI status and voice diagnostics.
+1. **Intro** → three short steps (or **Skip**) explain the app before any permission.
+2. **Scan** → tap the camera button, frame an object and capture. Kamu appears while it is analyzed.
+3. **Result** → the app shows the object, its emoji, category and the 5 languages.
+4. **Listen** → tap the audio icon on any language to hear the pronunciation.
+5. **Save** → save the word to your library and earn XP.
+6. **Share card** → export a branded PNG, or publish the discovery in the local feed.
+7. **Library** → search across the five languages, filter by category, star favorites and hear each word.
+8. **Review** → practice up to 10 flashcards with Again / Good / Easy grading.
+9. **Profile** → check XP, global rank, per-language ranks, streak and badges.
+10. **Settings** → offline mode, AI status and voice diagnostics.
 
 ### If voices are missing
 
@@ -84,9 +87,9 @@ Settings → **Device voices** → tap **Open system voice settings** and instal
 ```
 lingolens/
 ├── src/
-│   ├── app/            # Expo Router routes (tabs, result, settings)
-│   ├── components/     # Reusable UI
-│   ├── lib/            # Free AI, local catalog, gamification, image
+│   ├── app/            # Expo Router routes (welcome, tabs, result, review, settings)
+│   ├── components/     # Reusable UI, Kamu mascot and share card
+│   ├── lib/            # Free AI, local catalog, gamification, SRS, image
 │   ├── store/          # Global state with zustand + AsyncStorage
 │   └── theme.ts        # Colors and base styles
 ├── assets/images/      # Icons and splash

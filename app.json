@@ -2,7 +2,7 @@
   "expo": {
     "name": "LingoLens",
     "slug": "lingolens",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "lingolens",
@@ -49,7 +49,9 @@
           "photosPermission": "LingoLens accede a tus fotos para identificar objetos y traducir sus nombres.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-sharing",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": false,

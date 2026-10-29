@@ -17,8 +17,17 @@ import {
 
 import { Screen } from '@/components/Screen';
 import { WordCard } from '@/components/WordCard';
+import { Kamu } from '@/components/Kamu';
+import { KamuBubble } from '@/components/KamuBubble';
+import { ShareCardModal, type ShareWord } from '@/components/ShareCard';
 import { Chip, GhostButton, IconButton, PrimaryButton } from '@/components/ui';
 import { BADGE_BY_ID } from '@/lib/gamification';
+import {
+  KAMU_DUPLICATE_LINES,
+  KAMU_SAVED_LINES,
+  KAMU_SCAN_LINES,
+  pickLine,
+} from '@/lib/kamu';
 import { speakWord } from '@/lib/tts';
 import type { ScanResult } from '@/lib/types';
 import { identifyObject } from '@/lib/vision';
@@ -60,6 +69,7 @@ export default function ResultScreen() {
   const [published, setPublished] = useState(false);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [statusIndex, setStatusIndex] = useState(0);
+  const [shareVisible, setShareVisible] = useState(false);
 
   const scanY = useMemo(() => new Animated.Value(0), []);
 
@@ -167,6 +177,21 @@ export default function ResultScreen() {
     }
   }
 
+  function shareFromSummary() {
+    setSummary(null);
+    // El modal de resumen debe cerrarse antes de abrir la hoja de compartir.
+    setTimeout(() => setShareVisible(true), 260);
+  }
+
+  const shareWord: ShareWord | null = result
+    ? {
+        object: result.object,
+        emoji: result.emoji,
+        category: result.category,
+        words: Object.fromEntries(result.translations.map((item) => [item.code, item.word])),
+      }
+    : null;
+
   if (!pending) {
     return (
       <Screen>
@@ -232,8 +257,15 @@ export default function ResultScreen() {
                   },
                 ]}
               />
+              <View style={styles.kamuScan}>
+                <Kamu size={94} mood="confused" pointing="up" color={colors.pink} />
+                <KamuBubble
+                  text={pickLine(KAMU_SCAN_LINES, statusIndex)}
+                  style={styles.kamuBubble}
+                />
+              </View>
               <View style={styles.scanStatus}>
-                <ActivityIndicator color={colors.accent} />
+                <ActivityIndicator size="small" color={colors.accent} />
                 <Text style={styles.scanText}>{STATUS_MESSAGES[statusIndex]}</Text>
               </View>
             </View>
@@ -241,7 +273,7 @@ export default function ResultScreen() {
 
           {error ? (
             <View style={styles.scanLayer}>
-              <Ionicons name="alert-circle-outline" size={38} color={colors.danger} />
+              <Kamu size={84} mood="confused" pointing="right" color={colors.amber} />
               <Text style={styles.errorTitle}>No pudimos identificar la foto</Text>
             </View>
           ) : null}
@@ -338,6 +370,12 @@ export default function ResultScreen() {
               disabled={published}
               style={styles.publishButton}
             />
+            <GhostButton
+              label="Compartir tarjeta"
+              icon="image-outline"
+              onPress={() => setShareVisible(true)}
+              style={styles.shareCardButton}
+            />
           </>
         ) : null}
       </ScrollView>
@@ -350,9 +388,11 @@ export default function ResultScreen() {
             </Pressable>
 
             <View style={styles.modalIcon}>
-              <Text style={styles.modalEmoji}>
-                {summary?.duplicate ? '🤝' : summary?.published ? '📣' : '🎉'}
-              </Text>
+              <Kamu
+                size={88}
+                mood={summary?.duplicate ? 'smug' : summary?.published ? 'happy' : 'happy'}
+                color={summary?.duplicate ? colors.amber : colors.accent}
+              />
             </View>
 
             <Text style={styles.modalTitle}>
@@ -361,6 +401,9 @@ export default function ResultScreen() {
                 : summary?.published
                   ? '¡Publicado en la comunidad!'
                   : '¡Palabra guardada!'}
+            </Text>
+            <Text style={styles.modalQuote}>
+              “{pickLine(summary?.duplicate ? KAMU_DUPLICATE_LINES : KAMU_SAVED_LINES, summary?.xp ?? 0)}”
             </Text>
             <Text style={styles.modalText}>
               {summary?.duplicate
@@ -395,10 +438,21 @@ export default function ResultScreen() {
               </View>
             ) : null}
 
+            {summary && !summary.published ? (
+              <GhostButton
+                label="Compartir tarjeta"
+                icon="image-outline"
+                onPress={shareFromSummary}
+                style={styles.modalShare}
+              />
+            ) : null}
+
             <PrimaryButton label="Continuar" onPress={closeSummary} style={styles.modalButton} />
           </View>
         </View>
       </Modal>
+
+      <ShareCardModal word={shareVisible ? shareWord : null} onClose={() => setShareVisible(false)} />
     </Screen>
   );
 }
@@ -442,8 +496,17 @@ const styles = StyleSheet.create({
     ...absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  kamuScan: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  kamuBubble: {
+    maxWidth: 170,
+    flexShrink: 1,
   },
   scanLine: {
     position: 'absolute',
@@ -455,16 +518,17 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   scanStatus: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: 6,
     backgroundColor: 'rgba(3,6,12,0.55)',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
   },
   scanText: {
     color: colors.text,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   errorTitle: {
@@ -519,6 +583,9 @@ const styles = StyleSheet.create({
   },
   publishButton: {
     marginTop: spacing.md,
+  },
+  shareCardButton: {
+    marginTop: spacing.sm,
   },
   empty: {
     flex: 1,
@@ -623,22 +690,29 @@ const styles = StyleSheet.create({
     right: spacing.md,
   },
   modalIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
+    width: 92,
+    height: 92,
+    borderRadius: 30,
     backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  modalEmoji: {
-    fontSize: 34,
+    marginBottom: spacing.sm,
+    overflow: 'hidden',
   },
   modalTitle: {
     color: colors.text,
     fontSize: 20,
     fontWeight: '800',
     textAlign: 'center',
+  },
+  modalQuote: {
+    color: colors.amber,
+    fontSize: 12,
+    fontWeight: '600',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    lineHeight: 17,
   },
   modalText: {
     color: colors.textMuted,
@@ -693,6 +767,10 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     alignSelf: 'stretch',
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
+  },
+  modalShare: {
+    alignSelf: 'stretch',
+    marginTop: spacing.lg,
   },
 });

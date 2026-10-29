@@ -32,6 +32,21 @@ export type LearnedWord = {
   category: string;
   words: Record<string, string>;
   createdAt: string;
+  favorite?: boolean;
+};
+
+export type ReviewGrade = 'again' | 'good' | 'easy';
+
+/** Estado mínimo de repetición espaciada para una palabra guardada. */
+export type ReviewState = {
+  /** Días hasta el próximo repaso. */
+  interval: number;
+  /** Factor de facilidad (2.5 al empezar). */
+  ease: number;
+  /** Fecha ISO del próximo repaso. */
+  due: string;
+  reps: number;
+  lapses: number;
 };
 
 export type Post = {

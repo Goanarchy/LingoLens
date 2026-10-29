@@ -5,12 +5,15 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { seedPosts } from '@/data/seed';
 import { countLanguages, evaluateBadges, type BadgeContext } from '@/lib/gamification';
 import { DEFAULT_LANGS, type LangCode } from '@/lib/languages';
+import { gradeReview, REVIEW_XP } from '@/lib/srs';
 import type {
   LearnedWord,
   PendingScan,
   Post,
   PostOutcome,
   RegisterOutcome,
+  ReviewGrade,
+  ReviewState,
   ScanResult,
   Stats,
 } from '@/lib/types';
@@ -27,6 +30,7 @@ type RegisterInput = ScanResult & { langs?: LangCode[] };
 
 export type AppState = {
   hydrated: boolean;
+  onboarded: boolean;
   offlineMode: boolean;
   displayName: string;
   langs: LangCode[];
@@ -35,15 +39,19 @@ export type AppState = {
   badges: Record<string, string>;
   posts: Post[];
   stats: Stats;
+  reviews: Record<string, ReviewState>;
   pendingScan: PendingScan | null;
 
   setHydrated: () => void;
+  completeOnboarding: () => void;
   setOfflineMode: (value: boolean) => void;
   setDisplayName: (value: string) => void;
   setPendingScan: (scan: PendingScan | null) => void;
   clearPendingScan: () => void;
 
   registerWord: (result: RegisterInput) => RegisterOutcome;
+  toggleFavorite: (wordId: string) => void;
+  gradeWord: (wordId: string, grade: ReviewGrade) => { xpGained: number; newBadges: string[] };
   toggleLike: (postId: string) => void;
   addPost: (result: ScanResult, caption?: string) => PostOutcome;
   countAudio: () => void;
@@ -60,6 +68,14 @@ function isYesterday(key: string | null): boolean {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   return year === yesterday.getFullYear() && month === yesterday.getMonth() + 1 && day === yesterday.getDate();
+}
+
+/** Marca el día de hoy como activo y actualiza la racha si corresponde. */
+function touchDay(stats: Stats): Stats {
+  const today = dayKey();
+  if (stats.lastActiveDay === today) return stats;
+  const streak = isYesterday(stats.lastActiveDay) ? stats.streak + 1 : 1;
+  return { ...stats, streak, lastActiveDay: today };
 }
 
 function badgeContext(state: {
@@ -98,6 +114,7 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       hydrated: false,
+      onboarded: false,
       offlineMode: false,
       displayName: 'Explorador',
       langs: DEFAULT_LANGS,
@@ -106,9 +123,11 @@ export const useAppStore = create<AppState>()(
       badges: {},
       posts: seedPosts(),
       stats: EMPTY_STATS,
+      reviews: {},
       pendingScan: null,
 
       setHydrated: () => set({ hydrated: true }),
+      completeOnboarding: () => set({ onboarded: true }),
       setOfflineMode: (value) => set({ offlineMode: value }),
       setDisplayName: (value) => set({ displayName: value.trim().slice(0, 24) || 'Explorador' }),
       setPendingScan: (scan) => set({ pendingScan: scan }),
@@ -137,23 +156,45 @@ export const useAppStore = create<AppState>()(
           createdAt: new Date().toISOString(),
         };
 
-        const today = dayKey();
-        const streak =
-          state.stats.lastActiveDay === today
-            ? state.stats.streak || 1
-            : isYesterday(state.stats.lastActiveDay)
-              ? state.stats.streak + 1
-              : 1;
-
         const learned = [entry, ...state.learned];
         const xpGained = 12 + result.translations.length * 2;
         const xp = state.xp + xpGained;
-        const stats: Stats = { ...state.stats, streak, lastActiveDay: today };
+        const stats = touchDay(state.stats);
         const ctx = badgeContext({ learned, xp, stats, posts: state.posts });
         const { badges, newBadges } = unlockBadges(state.badges, ctx);
 
-        set({ learned, xp, stats, badges });
+        set({
+          learned,
+          xp,
+          stats,
+          badges,
+          reviews: { ...state.reviews, [entry.id]: { interval: 0, ease: 2.5, due: entry.createdAt, reps: 0, lapses: 0 } },
+        });
         return { xpGained, newBadges, duplicate: false };
+      },
+
+      toggleFavorite: (wordId) => {
+        set({
+          learned: get().learned.map((word) =>
+            word.id === wordId ? { ...word, favorite: !word.favorite } : word,
+          ),
+        });
+      },
+
+      gradeWord: (wordId, grade) => {
+        const state = get();
+        const word = state.learned.find((entry) => entry.id === wordId);
+        if (!word) return { xpGained: 0, newBadges: [] };
+
+        const reviews = { ...state.reviews, [wordId]: gradeReview(state.reviews[wordId], grade) };
+        const xpGained = REVIEW_XP[grade];
+        const xp = state.xp + xpGained;
+        const stats = touchDay(state.stats);
+        const ctx = badgeContext({ learned: state.learned, xp, stats, posts: state.posts });
+        const { badges, newBadges } = unlockBadges(state.badges, ctx);
+
+        set({ reviews, xp, stats, badges });
+        return { xpGained, newBadges };
       },
 
       toggleLike: (postId) => {
@@ -216,6 +257,7 @@ export const useAppStore = create<AppState>()(
           badges: {},
           posts: seedPosts(),
           stats: EMPTY_STATS,
+          reviews: {},
           pendingScan: null,
         }),
     }),
@@ -223,6 +265,7 @@ export const useAppStore = create<AppState>()(
       name: 'lingolens-v1',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
+        onboarded: state.onboarded,
         offlineMode: state.offlineMode,
         displayName: state.displayName,
         langs: state.langs,
@@ -231,6 +274,7 @@ export const useAppStore = create<AppState>()(
         badges: state.badges,
         posts: state.posts,
         stats: state.stats,
+        reviews: state.reviews,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated();
