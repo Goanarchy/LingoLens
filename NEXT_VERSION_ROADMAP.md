@@ -29,7 +29,7 @@ The research is consistent: identifying objects is the hook, but **retention com
 | W5 | **Shareable word card** | Free growth loop, no accounts | `react-native-view-shot` + `expo-sharing` (both in Expo Go) |
 | W6 | **Daily word + haptics** | Gives the camera a reason today; tactile feedback | Deterministic local pick from the catalog, `expo-haptics` |
 | W7 | **Accessibility pass** | Rare in this category, free to add | Accessibility labels, dynamic type, reduced-motion support |
-| W8 | **CI + tests** | Keeps the repo trustworthy | GitHub Actions (`tsc`, lint, doctor) + Jest for XP/ranks/SRS |
+| W8 | **CI + tests** | Keeps the repo trustworthy | GitHub Actions (`tsc`, lint, doctor) + Jest for XP/ranks/SRS — **not shipped in 1.1.0**; planned for 1.2.0 |
 
 ### Wave 2 — v1.2.0 candidates
 
@@ -65,6 +65,6 @@ Several App Store apps already use "LingoLens", at least one with the same camer
 | Scope | Version |
 |---|---|
 | Fixes for 1.0.0 only | 1.0.1 |
-| Wave 1 (intro, mascot, library, review, share, daily word, accessibility, CI) | 1.1.0 |
+| Wave 1 (intro, mascot, library, review, share, daily word, accessibility) | 1.1.0 |
 | Wave 1 + Wave 2 | 1.2.0 |
 | Includes Wave 3 (backend) | 2.0.0 |

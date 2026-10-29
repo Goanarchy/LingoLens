@@ -50,8 +50,7 @@
           "microphonePermission": false
         }
       ],
-      "expo-sharing",
-      "expo-localization"
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": false,
