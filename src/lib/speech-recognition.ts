@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { LANG_BY_CODE, isLangCode, type LangCode } from './languages';
 import type { Translation } from './types';
 
@@ -13,16 +14,22 @@ let ExpoSpeechRecognitionModule: {
   addListener: (eventName: string, listener: (event: unknown) => void) => { remove: () => void };
 } | null = null;
 
-try {
-  // Dynamically require so Expo Go never crashes when the native module is absent.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require('expo-speech-recognition');
-  const candidate = mod?.ExpoSpeechRecognitionModule ?? mod?.default ?? mod;
-  if (candidate && typeof candidate.start === 'function') {
-    ExpoSpeechRecognitionModule = candidate;
+// Only load the native speech recognition module in standalone/dev-client builds.
+// In Expo Go ('storeClient'), skip requireNativeModule so LogBox never warns.
+const isExpoGo =
+  Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
+
+if (!isExpoGo) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('expo-speech-recognition');
+    const candidate = mod?.ExpoSpeechRecognitionModule ?? mod?.default ?? mod;
+    if (candidate && typeof candidate.start === 'function') {
+      ExpoSpeechRecognitionModule = candidate;
+    }
+  } catch {
+    ExpoSpeechRecognitionModule = null;
   }
-} catch {
-  ExpoSpeechRecognitionModule = null;
 }
 
 export type RecognitionMode = 'native-asr' | 'web-asr' | 'guided-voice';
