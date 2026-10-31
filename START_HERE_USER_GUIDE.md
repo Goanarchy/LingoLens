@@ -1,8 +1,8 @@
-# LingoLens — Quick Start Guide
+# LingoLens v2.0.0 — Quick Start & Testing Guide (Google Pixel 9 Pro XL)
 
-**Version 1.1.0** · [github.com/Goanarchy/LingoLens](https://github.com/Goanarchy/LingoLens)
+**Version 2.0.0** · [github.com/Goanarchy/LingoLens](https://github.com/Goanarchy/LingoLens)
 
-Point the camera at an object: LingoLens identifies it and shows its name in Spanish, English, French, German and Italian, with written pronunciation and audio. Save it to your library, review it with spaced repetition and share a card.
+Open the app and your camera activates immediately: snap any object (or today's **Word of the Day**) to discover its name across **1 to 5 simultaneous languages** (**Spanish, English, Japanese, Hindi, and Mandarin**) with native script, romanization (*Rōmaji, Transliteration, Pinyin*), phonetic pronunciation, normal & slow (`🐢`) audio, and a **Duolingo-style pronunciation test**.
 
 ---
 
@@ -10,15 +10,15 @@ Point the camera at an object: LingoLens identifies it and shows its name in Spa
 
 | Item | Detail |
 |---|---|
-| Phone | Android 8+ or iOS 15+ (tested on Google Pixel 9 Pro XL) |
-| Test app | **Expo Go** (SDK 58) from the Play Store / App Store |
+| Target Device | **Google Pixel 9 Pro XL** (or any Android 10+ / iOS 15+ phone) |
+| Runtime | **Expo Go** (SDK 58) from Google Play Store / App Store |
 | Computer | Node.js 20+ and npm |
 | Network | Phone and computer on the **same Wi-Fi network** |
-| Cost | **$0** — no accounts, no API keys, no purchases |
+| Cost | **$0** — 100% free, keyless Vision AI, no accounts or subscriptions |
 
 ---
 
-## 2. Install and run (5 minutes)
+## 2. Install & Run on Google Pixel 9 Pro XL
 
 ```bash
 # 1. Enter the project folder
@@ -27,79 +27,43 @@ cd lingolens
 # 2. Install dependencies (first time only)
 npm install
 
-# 3. Start the dev server
-npm start
+# 3. Start the Metro dev server on your local Wi-Fi
+npx expo start --lan
 ```
 
-When the QR code appears in the terminal:
-
-1. Open **Expo Go** on your phone.
-2. Scan the QR code (Android: "Scan QR code" button; iOS: the system camera).
-3. Complete the 3-step intro. The camera permission is requested only when you take the first photo.
-
-> If the QR code does not connect, make sure the phone and PC are on the same Wi-Fi and that the firewall allows Node.js. On Windows you can also run `npm start -- --tunnel`.
+> **VPN Tip (Windows)**: If you have a VPN active (such as ProtonVPN `ProTUN`), set `REACT_NATIVE_PACKAGER_HOSTNAME=<your-Wi-Fi-IPv4>` (for example `192.168.1.195`) before running `npx expo start --lan` so your Pixel 9 Pro XL connects directly over Wi-Fi.
 
 ---
 
-## 3. How to use it
+## 3. Complete Feature Walkthrough (v2.0.0)
 
-1. **Intro** → three short steps (or **Skip**) explain the app before any permission.
-2. **Scan** → tap the camera button, frame an object and capture. Kamu appears while it is analyzed.
-3. **Result** → the app shows the object, its emoji, category and the 5 languages.
-4. **Listen** → tap the audio icon on any language to hear the pronunciation.
-5. **Save** → save the word to your library and earn XP.
-6. **Share card** → export a branded PNG, or publish the discovery in the local feed.
-7. **Library** → search across the five languages, filter by category, star favorites and hear each word.
-8. **Review** → practice up to 10 flashcards with Again / Good / Easy grading.
-9. **Profile** → check XP, global rank, per-language ranks, streak and badges.
-10. **Settings** → offline mode, AI status and voice diagnostics.
-
-### If voices are missing
-
-Settings → **Device voices** → tap **Open system voice settings** and install the French, German and Italian packs.
-
----
-
-## 4. How the free AI works
-
-- Uses **OVHcloud AI Endpoints** on its anonymous tier: no signup and no key required.
-- Automatic model cascade: `Qwen2.5-VL-72B-Instruct` → `Qwen3.8-27B` → `Qwen3.5-9B` → `Qwen3.6-27B`.
-- Anonymous tier limit: ~2 requests per minute per IP.
-- If the AI fails or is saturated, the app uses a **local catalog of 18 objects** so the flow never breaks, shows a notice and offers **Retry with AI**.
-- In **Settings → Offline mode** you can force the local catalog.
-
----
-
-## 5. Common issues
-
-| Symptom | Fix |
-|---|---|
-| Expo Go does not open the project | Same Wi-Fi, or `npm start -- --tunnel` |
-| The camera stays black | Close Expo Go and reopen it; check the camera permission |
-| "AI busy" or network error | The free tier is saturated: wait ~1 minute and use **Retry with AI** |
-| No audio | Install the voice pack for that language (Settings → Device voices) |
-| The app restarts while scanning | Update to 1.0.0: photos are downscaled to 1024 px before upload |
+1. **Immediate Camera Launch (`Camera` tab)**:
+   - The app opens directly onto the live camera viewfinder and requests camera permission automatically.
+   - Check the **Word of the Day Quest** banner at the top (`👑 +25 XP`): tap it to hear today's target word or tap **Try Quest** to test it immediately.
+2. **Dynamic 1-to-5 Language Bar**:
+   - Tap the flag pills (`🇪🇸 Spanish`, `🇺🇸 English`, `🇯🇵 Japanese`, `🇮🇳 Hindi`, `🇨🇳 Mandarin`) on the Camera screen, Result screen, Profile, or Settings.
+   - Selecting **1 language** shows **1 card**; selecting **3** shows **3 simultaneously**; selecting **5** shows all **5**.
+3. **Result Screen & Kamu's Photo Critique**:
+   - After capturing a photo, **Kamu** (the one-eyed prism chameleon) delivers a funny, object-specific critique (`"Kamu's Photo Critique"`).
+   - If your photo matches the **Word of the Day**, you unlock today's **Daily Photo Crown (Bronze)** and `+25 Bonus XP`.
+4. **Native Script, Romanization, Phonetics & Slow Audio**:
+   - Each card displays the word in its **native script** (`りんご`, `सेब`, `苹果`), **Latin romanization** (`Rōmaji`, `Transliteration`, `Pinyin`), and **phonetic guide** (`/reen-GOH/`).
+   - Tap **🔊** for normal speed (`0.85x`) or **🐢** for slow articulation (`0.52x`).
+5. **Duolingo-Style Pronunciation Module**:
+   - Tap **Practice Pronunciation · +15 XP** beneath any card.
+   - Hold the microphone button while speaking the word clearly, then verify the syllable pattern.
+   - Requires **`>= 75%` accuracy** within **3 attempts** to earn `+15 XP` and upgrade today's Crown to **Gold**. Includes a *"Can't speak now"* skip option.
+6. **1-Week, 2-Week & 3-Week Photo Streak Trophies (`Profile` tab)**:
+   - View your progress toward **Week 1 (7 days · +100 XP · Bronze Lens Crown)**, **Week 2 (14 days · +250 XP · Silver Prism Trophy)**, and **Week 3 (21 days · +500 XP · Golden Aperture Crown)**.
+   - Use the **Test Streak Rewards (`🔥 1W`, `🔥 2W`, `🔥 3W`)** buttons in Profile to test and verify all three milestone unlocks immediately.
+7. **Merit Hub Social Network (`Merit Hub` tab)**:
+   - Compete on the **Merit & Streak Hall of Fame** podium ranked by consecutive photo streaks, crowns, and XP.
+   - Filter posts by `All Discoveries`, `👑 Crown Catches`, or `🔥 7d+ Streaks`, and react with `🔥`, `💡`, and `👑`.
+8. **Library & Spaced Repetition (`Library` tab)**:
+   - Search saved words across all 5 scripts and romanizations, export `1080×1350` collectible PNG cards, and practice flashcards with SM-2-lite spaced repetition (`/review`).
 
 ---
 
-## 6. Project structure
+## 4. License
 
-```
-lingolens/
-├── src/
-│   ├── app/            # Expo Router routes (welcome, tabs, result, review, settings)
-│   ├── components/     # Reusable UI, Kamu mascot and share card
-│   ├── lib/            # Free AI, local catalog, gamification, SRS, image
-│   ├── store/          # Global state with zustand + AsyncStorage
-│   └── theme.ts        # Colors and base styles
-├── assets/images/      # Icons and splash
-├── app.json            # Expo configuration
-├── RELEASE_NOTES.md    # Version history
-└── NEXT_VERSION_ROADMAP.md
-```
-
----
-
-## 7. License
-
-MIT © 2026 Victor Montoya Rojas. See [LICENSE](./LICENSE).
+MIT © 2026 Victor Montoya Rojas. See [`LICENSE`](./LICENSE).

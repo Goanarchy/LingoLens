@@ -1,6 +1,6 @@
 # LingoLens — Comprehensive Project Context & Evolution History (`PROJECT_CONTEXT.md`)
 
-> **Purpose of this document**: This file serves as the authoritative, end-to-end context, architectural specification, and historical log of **LingoLens** ("Lingo Leans") from its initial inception (`v1.0.0`) through its multi-agent scaling upgrade (`v2.0.0`). Future AI models, autonomous agent teams, and developers should read this file first before planning or implementing any new features.
+> **Purpose of this document**: This file is the single source of truth for **LingoLens** ("Lingo Leans"), documenting every user request, architectural decision, data model, gamification rule, hardware optimization, and testing instruction from its initial creation (`v1.0.0`) through the `v1.1.0` learning loop and the `v2.0.0` 5-Agent upgrade for the **Google Pixel 9 Pro XL**. Any future AI model or engineer working on this repository should read this file and [`AGENTS.md`](./AGENTS.md) first.
 
 ---
 
@@ -16,147 +16,120 @@
 
 ---
 
-## 2. Chronological Evolution of the App (Inception to v2.0.0)
+## 2. Complete Chronological History (What Was Requested & What Was Built)
 
-### Phase 0 — Initial Conception (`v1.0.0`)
-1. **Original Goal**: Build a mobile app where taking a photo of an everyday object translates it into five languages with native audio playback, spaced repetition flashcards, a local library, and a basic community feed—without requiring paid API keys, user accounts, or backend servers.
-2. **Initial Tech Stack**:
-   - Expo Router (`src/app/`) with bottom tabs (`index`, `library`, `feed`, `profile`) and modal/stack screens (`welcome`, `result`, `review`, `settings`).
-   - Keyless vision inference using open vision-language models (`Qwen2.5-VL`) hosted on OVHcloud AI Endpoints with an offline fallback catalog.
-   - Local state persistence via `zustand` + `@react-native-async-storage/async-storage`.
-   - Mascot introduction: **Kamu**, a one-eyed chameleon SVG character.
-   - Collectible image card export (`1080×1350` PNG) via `react-native-view-shot` + `expo-sharing`.
+### Stage 1 — Initial Creation (`v1.0.0`)
+- **What was requested**:
+  - Create a mobile app that uses the phone camera to identify everyday objects and translate them into 5 languages with native pronunciation audio, XP progression, and a community feed, operating 100% free without paid API keys or user registration.
+- **What was achieved**:
+  - Built the initial Expo SDK 58 + Expo Router architecture (`src/app/`, `src/components/`, `src/lib/`, `src/store/`).
+  - Implemented keyless cloud vision cascade (`Qwen2.5-VL-72B-Instruct` via OVHcloud AI Endpoints) paired with an offline local catalog so the app never fails when offline or rate-limited.
+  - Added on-device image downscaling (`MAX_IMAGE_EDGE = 1024`, JPEG quality `0.72` in `src/lib/image.ts`) to prevent 50 MP camera captures from exhausting memory in Expo Go.
+  - Created persisted Zustand state (`AsyncStorage`) for XP, learned words, badges, and local community posts.
 
-### Phase 1 — Multi-Agent Scaling & Pixel 9 Pro XL Upgrade (`v2.0.0`)
-The user requested a comprehensive 5-Agent architectural and product upgrade with the following exact requirements:
+### Stage 2 — Retention & Learning Loop (`v1.1.0`)
+- **What was requested**:
+  - Benchmark LingoLens against top camera/language apps (Google Lens, Duolingo, Anki, CapWords, Seek) and close the retention gaps while staying 100% free and Expo Go compatible.
+- **What was achieved**:
+  - **Kamu Mascot (v1)**: Original code-drawn SVG chameleon (`react-native-svg`) with zero binary image bloat.
+  - **Searchable Library (`/library`)**: Search across languages, category filter chips, and favorites (`★`).
+  - **Spaced-Repetition Flashcards (`/review`, `src/lib/srs.ts`)**: SM-2-lite scheduler with *Again / Good / Easy* grading and XP rewards.
+  - **Collectible Share Card (`src/components/ShareCard.tsx`)**: Offscreen `1080×1350` PNG card capture via `react-native-view-shot` + `expo-sharing`.
+  - **Market Research & Roadmap Docs**: Documented competitor analysis in `MARKET_RESEARCH.md` and `NEXT_VERSION_ROADMAP.md`.
 
-1. **Agent 1 — Research, Architecture & Vision AI Audit**:
-   - Inspect and preserve the repository's folder structure (`src/app`, `src/components`, `src/lib`, `src/store`, `src/data`, `src/theme`).
-   - Optimize image capture and memory usage for the **Google Pixel 9 Pro XL** 50 MP camera sensor running inside **Expo Go**.
-   - Connect real-time image analysis with the **"Word of the Day"** quest and object detection.
+### Stage 3 — Multi-Agent Scaling & Google Pixel 9 Pro XL Upgrade (`v2.0.0`)
+- **What was requested (5-Agent System Prompt)**:
+  1. **Agent 1 (Lead Architect & Researcher)**: Audit repository architecture and optimize vision AI + camera pipeline specifically for the **Google Pixel 9 Pro XL** running **Expo Go**, linking photo analysis with the **"Word of the Day"**.
+  2. **Agent 2 (Frontend & Mobile Engineer — Core UX, Camera & Pronunciation)**:
+     - **Immediate Camera Launch**: Opening the app must activate the camera immediately (`src/app/(tabs)/index.tsx`), ready to capture a photo right away.
+     - **Dynamic 5-Language Support**: Support **Spanish (`es`), English (`en`), Japanese (`ja`), Hindi (`hi`), and Mandarin (`zh`)**. Display cards dynamically based on the user's selection (1 language → 1 card; 3 languages → 3 simultaneous cards; 5 languages → 5 simultaneous cards). Each card must show the **translated word in native script**, **romanization**, and **phonetic pronunciation**.
+     - **Duolingo-Style Pronunciation Module**: Interactive voice test beneath the results. Award pronunciation points **only** when the system validates that pronunciation is accurate.
+  3. **Agent 3 (Product Designer & Gamification Expert — Crowns, Streaks & Merit Social Network)**:
+     - Award points and **Daily Photo Crowns** when the user photographs an object related to the **"Word of the Day"**.
+     - Implement special unlockable rewards and trophies for **1 full week (7 days)**, **2 weeks (14 days)**, and **3 weeks (21 days)** of consecutive daily photos.
+     - Build a **Merit Social Network** focused on rewarding long photo streaks, crowns, and high ranks.
+  4. **Agent 4 (UI/UX & Character Designer — Mascot Evolution)**:
+     - Give **Kamu** a solid backstory (`KAMU_LORE`), upgraded visual design, fluid animations/moods, interactive guide banners across screens, and a dynamic system of **witty, funny comments specific to the exact photo just taken (`kamuQuip`)**.
+  5. **Agent 5 (DevOps & QA Engineer)**:
+     - Ensure 100% fluidity on **Google Pixel 9 Pro XL** with **Expo Go**, unify the entire repository in **100% English**, verify zero TypeScript/lint errors, synchronize with GitHub, and prepare live Expo Go QR testing.
 
-2. **Agent 2 — Core UX, Immediate Camera, Dynamic 5-Language Engine & Duolingo Pronunciation**:
-   - **Immediate Camera Launch**: Opening the app must activate the camera screen immediately (`src/app/(tabs)/index.tsx`), ready to capture a photo without blocking onboarding screens.
-   - **Dynamic Multilingual Support (5 Mandatory Languages)**:
-     - Supported languages: **Spanish (`es`), English (`en`), Japanese (`ja`), Hindi (`hi`), and Mandarin (`zh`)**.
-     - Dynamic simultaneous display: If the user selects 1 language, display 1 card; if 3, display 3 simultaneously; if 5, display all 5.
-     - Each language card must display:
-       1. **Translated word in native script** (`manzana`, `apple`, `りんご`, `सेब`, `苹果`).
-       2. **Latin romanization** (*Hepburn Rōmaji*, *ISO Transliteration*, *Hanyu Pinyin with tone marks*).
-       3. **Phonetic pronunciation guide** (`/mahn-SAH-nah/`, `/reen-GOH/`, `/píng-guǒ/`) + normal (`0.85x`) and slow turtle (`🐢 0.52x`) TTS audio.
-   - **Duolingo-Style Pronunciation Module**:
-     - Interactive voice & syllable test directly beneath each translation card.
-     - Points (`+15 XP`) are awarded **strictly when pronunciation is validated as passing** (`>= 75%` similarity threshold, 3-attempt limit, syllable-by-syllable visual feedback, and *"Can't speak now"* skip option).
-
-3. **Agent 3 — Rewards System, Photo Streaks (1, 2 & 3 Weeks) & Merit Social Network**:
-   - **Word of the Day Crowns**: Photographing an object related to the "Word of the Day" awards bonus XP (`+25 XP`) and unlocks a **Daily Photo Crown** (`Bronze` on photo match → `Silver` on saving to Library → `Gold` on passing the pronunciation test).
-   - **Consistency Milestones (1, 2 & 3 Consecutive Weeks)**:
-     - **Week 1 (7 days)**: `🥉 Bronze Lens Crown` · Title: *Shutter Sprinter* · **`+100 XP`**.
-     - **Week 2 (14 days)**: `🥈 Silver Prism Trophy` · Title: *Fortnight Focus Master* · **`+250 XP`**.
-     - **Week 3 (21 days)**: `👑 Golden Aperture Crown` · Title: *Three-Week Dynasty* · **`+500 XP`**.
-   - **Merit Social Network (`Merit Hub`)**:
-     - Community section (`src/app/(tabs)/feed.tsx`) featuring a **Merit & Streak Hall of Fame** leaderboard ranking users by consecutive photo streaks, crowns, and XP, plus filters (`All Discoveries`, `👑 Crown Catches`, `🔥 7d+ Streaks`) and merit reactions (`🔥`, `💡`, `👑`).
-
-4. **Agent 4 — Identity, Mascot Evolution (`Kamu`) & Contextual Personality**:
-   - **Solid Backstory (`KAMU_LORE`)**: Kamu is a *One-Eyed Prism Chameleon* hatched inside a telephoto camera lens in a Kyoto optical workshop (`Periscope Lens Chamber #09`), whose scales shift color to match each language.
-   - **Enhanced SVG & Fluid Animations (`src/components/Kamu.tsx`)**: 8 animated moods (`idle`, `happy`, `excited`, `crowned`, `confused`, `sleepy`, `smug`, `wink`), optical aperture ring inside his lens-eye, and a royal golden crown SVG on his crest.
-   - **Contextual Interactive Guide (`KamuGuideBanner`)**: Appears across Camera, Library, Merit Hub, and Profile screens with tap-to-cycle tips and an interactive Lore modal.
-   - **Photo-Specific Witty Quips (`kamuQuip`)**: Kamu always comments something funny, witty, and specific about the exact object the user just photographed (`src/lib/kamu.ts`, `src/lib/demoCatalog.ts`, `src/app/result.tsx`).
-
-5. **Agent 5 — QA, Hardware Optimization & GitHub Deployment**:
-   - Zero TypeScript errors (`npx tsc --noEmit`) and zero ESLint errors (`npx expo lint`).
-   - Safe execution inside **Expo Go** on Android (`Constants.executionEnvironment === 'storeClient'` guard prevents native module warnings for optional dev-build packages).
-   - All changes committed and pushed in English to `origin/main`.
-
----
-
-## 3. Complete Architecture & File Map
-
-```text
-lingolens/
-├── app.json                          # Expo SDK 58 config (v2.0.0, dark UI, English permissions)
-├── package.json                      # Dependencies & scripts (Expo 58, RN 0.88.1, Zustand 5)
-├── tsconfig.json                     # Strict TypeScript config with @/* path alias
-├── README.md                         # Developer quickstart & feature overview
-├── RELEASE_NOTES.md                  # v2.0.0 release summary
-├── PROJECT_CONTEXT.md                # This comprehensive context document for future models
-└── src/
-    ├── app/                          # Expo Router screens
-    │   ├── _layout.tsx               # Root Stack navigator + SafeAreaProvider + dark StatusBar
-    │   ├── (tabs)/
-    │   │   ├── _layout.tsx           # Bottom TabBar (Camera, Library, Merit Hub, Profile)
-    │   │   ├── index.tsx             # Immediate Camera viewfinder, Word of the Day Quest,
-    │   │   │                         # live 1–5 language toggle bar & instant smart presets
-    │   │   ├── library.tsx           # Saved vocabulary search across 5 scripts + SRS banner
-    │   │   ├── feed.tsx              # Merit Hub: Hall of Fame Podium + Crown/Streak filters
-    │   │   └── profile.tsx           # 1/2/3-Week Streak Trophies, Crowns Vault, 1–5 Lang
-    │   │                             # selector, 16 Badges & Polyglot Rank Path
-    │   ├── result.tsx                # Vision AI analysis, Kamu photo critique, Crown banner,
-    │   │                             # dynamic 1–5 WordCards & reward summary modal
-    │   ├── review.tsx                # SM-2-lite Spaced Repetition flashcard session
-    │   ├── settings.tsx              # Display name, 1–5 language selector, offline switch,
-    │   │                             # Android TTS voice diagnostics & progress reset
-    │   └── welcome.tsx               # Optional 3-step interactive Kamu tour
-    ├── components/
-    │   ├── Kamu.tsx                  # Animated SVG mascot (8 moods, lens aperture, crown)
-    │   ├── KamuBubble.tsx            # Speech bubble + KamuGuideBanner + Lore modal
-    │   ├── WordCard.tsx              # 5-script card + slow turtle TTS + Duolingo voice coach
-    │   ├── PostCard.tsx              # Merit Hub post card with streak/crown pills & reactions
-    │   ├── ShareCard.tsx             # 1080x1350 PNG collectible card generator
-    │   ├── BadgeTile.tsx             # Tier-colored achievement badge tile
-    │   ├── XPBar.tsx                 # Animated progress bar
-    │   ├── Screen.tsx                # Edge-to-edge SafeAreaView + gradient background
-    │   └── ui.tsx                    # Shared UI primitives (Card, PrimaryButton, Chip, etc.)
-    ├── lib/
-    │   ├── languages.ts              # 5 mandatory languages (es, en, ja, hi, zh) & script meta
-    │   ├── types.ts                  # Core TypeScript types (Translation, ScanResult, Post, etc.)
-    │   ├── demoCatalog.ts            # 24-item offline polyglot catalog + daily match + quips
-    │   ├── vision.ts                 # Hybrid Qwen2.5-VL cloud vision + local catalog fallback
-    │   ├── pronunciation-engine.ts   # Duolingo-style 3-attempt syllable & Levenshtein scorer
-    │   ├── speech-recognition.ts     # Hardware/Web ASR + Expo Go safe acoustic fallback
-    │   ├── gamification.ts           # 7 Ranks, 3 Weekly Streak Milestones, 16 Badges
-    │   ├── kamu.ts                   # Kamu lore, chromatic map, screen tips & photo quips
-    │   ├── image.ts                  # Pixel 9 Pro XL 50MP -> 1024px JPEG downscaler
-    │   ├── tts.ts                    # Native Speech wrapper (normal 0.85x & slow 0.52x)
-    │   └── srs.ts                    # Spaced repetition interval & ease scheduler
-    ├── data/
-    │   └── seed.ts                   # MERIT_RIVALS leaderboard peers & initial community posts
-    ├── store/
-    │   └── useAppStore.ts            # Zustand persisted store ('lingolens-v2' in AsyncStorage)
-    └── theme/
-        └── index.ts                  # Colors, gradients, spacing, and border radii
-```
+- **What was achieved in `v2.0.0`**:
+  - **Immediate Camera Viewfinder (`src/app/(tabs)/index.tsx`, `src/app/(tabs)/_layout.tsx`)**:
+    - App opens directly onto the `Camera` tab (`onboarded` defaults to `true`) and auto-requests camera permission via `useEffect`.
+    - Includes top HUD (`🔥 Photo Streak`, `👑 Crowns`), interactive **Word of the Day Quest** banner with native TTS preview, live **1-to-5 Language Toggle Bar**, and **Quick Smart Presets** (*Auto Vision AI*, *Today's Quest*, and catalog objects) for instant testing in Expo Go.
+  - **5-Script Dynamic Polyglot Engine (`src/lib/languages.ts`, `src/lib/demoCatalog.ts`, `src/lib/vision.ts`)**:
+    - Replaced Western-European-only defaults with the 5 mandatory global languages covering 4 distinct writing systems:
+      - 🇪🇸 **Spanish (`es-ES`)** — Latin script
+      - 🇺🇸 **English (`en-US`)** — Latin script
+      - 🇯🇵 **Japanese (`ja-JP`)** — Kanji/Kana + **Hepburn Rōmaji**
+      - 🇮🇳 **Hindi (`hi-IN`)** — Devanagari (`देवनागरी`) + **ISO Transliteration**
+      - 🇨🇳 **Mandarin (`zh-CN`)** — Simplified Hanzi (`简体中文`) + **Hanyu Pinyin with tone marks**
+    - Expanded `CATALOG` in `src/lib/demoCatalog.ts` to **24 everyday photographable objects** (`apple`, `coffee`, `cup`, `book`, `chair`, `table`, `dog`, `cat`, `phone`, `laptop`, `key`, `clock`, `shoe`, `flower`, `bottle`, `car`, `water`, `window`, `glasses`, `pen`, `backpack`, `headphones`, `bread`, `tree`), each with native scripts, romanizations, phonetic guides, example sentences + English translations, semantic aliases for daily matching, and 3 object-specific Kamu quips.
+  - **Duolingo-Style Pronunciation Coach (`src/lib/pronunciation-engine.ts`, `src/lib/speech-recognition.ts`, `src/components/WordCard.tsx`)**:
+    - Normalizes Unicode (`NFKC`/`NFD`), strips tone marks/diacritics, and computes normalized Levenshtein similarity + syllable hit ratio against native script, romanization, and phonetic representation.
+    - Enforces `PRONUNCIATION_PASS_THRESHOLD = 0.75` (75%), maximum 3 attempts per card, syllable-by-syllable green/amber highlighting, normal (`🔊 0.85x`) and slow turtle (`🐢 0.52x`) TTS playback, and a *"Can't speak now"* skip button.
+    - Guarded native ASR with `Constants.executionEnvironment !== 'storeClient'` so **Expo Go** never triggers native module warnings, seamlessly running the interactive Hold-to-Speak cadence + phonetic syllable verifier in Expo Go.
+  - **Crowns, 1/2/3-Week Streak Trophies & Merit Hub (`src/lib/gamification.ts`, `src/store/useAppStore.ts`, `src/app/(tabs)/feed.tsx`, `src/app/(tabs)/profile.tsx`)**:
+    - **Daily Photo Crowns**: `Bronze` (`+25 XP` on photographing the Word of the Day) → `Silver` (on saving word) → `Gold` (on passing pronunciation).
+    - **Weekly Streak Milestones (`STREAK_MILESTONES`)**:
+      - `streak_week_1` (7 days): `🥉 Week 1 · Bronze Lens Crown` (`+100 XP`, title: *Shutter Sprinter*)
+      - `streak_week_2` (14 days): `🥈 Week 2 · Silver Prism Trophy` (`+250 XP`, title: *Fortnight Focus Master*)
+      - `streak_week_3` (21 days): `👑 Week 3 · Golden Aperture Crown` (`+500 XP`, title: *Three-Week Dynasty*)
+    - Added instant test buttons (`🔥 1W (7d)`, `🔥 2W (14d)`, `🔥 3W (21d)`) in `src/app/(tabs)/profile.tsx` (`simulateStreakMilestone`) so testers on Pixel 9 Pro XL can verify all 3 weekly reward tiers immediately.
+    - Built the **Merit Hub (`src/app/(tabs)/feed.tsx`)** featuring the **Merit & Streak Hall of Fame** leaderboard (`MERIT_RIVALS` + user), filter tabs (`All Discoveries`, `👑 Crown Catches`, `🔥 7d+ Streaks`), and interactive reactions (`🔥`, `💡`, `👑`).
+  - **Kamu Mascot Evolution (`src/lib/kamu.ts`, `src/components/Kamu.tsx`, `src/components/KamuBubble.tsx`)**:
+    - Added `KAMU_LORE` (origin in Kyoto Optical Lab Periscope Lens Chamber #09, motto, chromatic scale shifting).
+    - Upgraded `Kamu.tsx` with 8 moods (`idle`, `happy`, `excited`, `crowned`, `confused`, `sleepy`, `smug`, `wink`), golden royal crown SVG polygon, and optical aperture ring.
+    - Added `KamuGuideBanner` with tap-to-cycle screen tips and full Lore modal across Camera, Library, Merit Hub, and Profile.
+    - Added **Kamu's Photo Critique** card on `src/app/result.tsx` displaying `result.kamuQuip` for every photo.
 
 ---
 
-## 4. State Management Contract (`useAppStore.ts`)
+## 3. Complete Architecture & File Reference
 
-- **Storage Key**: `lingolens-v2` (persisted via `AsyncStorage`).
-- **Key State Slices**:
-  - `learningLangs: LangCode[]` — Array of 1 to 5 active languages (`['es', 'en', 'ja', 'hi', 'zh']` by default). Guaranteed non-empty via `sanitizeLangs()`.
-  - `scoreboard: Record<LangCode, number>` — Per-language XP earned from passing pronunciation checks.
-  - `xp: number` — Global experience points driving the 7 Polyglot Ranks (`Curious` → `Legend`).
-  - `stats: Stats` — Tracks `photoStreak`, `bestPhotoStreak`, `lastPhotoDay`, `photosTaken`, `streak`, `pronunciationPasses`, `pronunciationAttempts`, `audioPlays`, `postsCreated`, and `likesGiven`.
-  - `crowns: CrownRecord[]` — History of Daily Photo Crowns (`day`, `tier: 'bronze' | 'silver' | 'gold'`, `object`, `dailyWord`).
-  - `unlockedMilestones: Record<string, string>` — Tracks unlocked 1-week (`streak_week_1`), 2-week (`streak_week_2`), and 3-week (`streak_week_3`) photo streak trophies.
-  - `pronunciationPassedKeys: Record<string, boolean>` — Keys of the form `"${object}:${langCode}"` that have passed the `>= 75%` pronunciation check.
-- **Key Actions**:
-  - `toggleLearningLang(code)` / `setLearningLangs(codes)` — Dynamically updates the 1–5 active languages.
-  - `recordPhotoCapture(result)` — Increments `photoStreak`, awards `+10 XP` base photo XP, awards `+25 XP` + `Bronze` Crown if `result.dailyMatch.matched` is true, and unlocks 1/2/3-week trophies (`+100 / +250 / +500 XP`).
-  - `registerWord(result)` — Saves word to `learned`, schedules initial SRS review, and upgrades today's Crown from `Bronze` to `Silver`.
-  - `recordPronunciationAttempt(object, lang, passed, points, isDailyMatch)` — Awards `+15 XP` (first pass) or `+3 XP` (practice) **only when `passed === true`**, updates `scoreboard[lang]`, and upgrades today's Crown to `Gold`.
-  - `simulateStreakMilestone(7 | 14 | 21)` — Instant QA helper on the Profile screen to test and demonstrate the 1-week, 2-week, and 3-week streak trophies.
+| File Path | Role & Responsibility |
+|---|---|
+| `app.json` | Expo SDK 58 configuration (`v2.0.0`, dark UI, English camera & photo permissions). |
+| `package.json` | Dependencies (`expo ~58.0.21`, `react-native 0.88.1`, `zustand ^5.0.16`, `react-native-svg`, etc.). |
+| `AGENTS.md` | Fast-load operational rules and commands for AI coding agents. |
+| `PROJECT_CONTEXT.md` | Complete historical & architectural context (this file). |
+| `NEXT_VERSION_ROADMAP.md` | Release history (`v1.0.0` → `v1.1.0` → `v2.0.0`) and `v2.1.0+` backlog. |
+| `START_HERE_USER_GUIDE.md` | Step-by-step user & tester manual for Google Pixel 9 Pro XL + Expo Go. |
+| `src/lib/languages.ts` | Defines `LangCode` (`'es' \| 'en' \| 'ja' \| 'hi' \| 'zh'`), `LANGUAGES`, `sanitizeLangs`, and `usesNonLatinScript`. |
+| `src/lib/types.ts` | Central TypeScript contracts (`Translation`, `DailyMatch`, `ScanResult`, `CrownRecord`, `Post`, `Stats`, `PhotoOutcome`, `PronunciationOutcome`). |
+| `src/lib/demoCatalog.ts` | 24-object offline polyglot dictionary, `getDailyWord()`, `evaluateDailyMatch()`, and object-specific `kamuQuips`. |
+| `src/lib/vision.ts` | Keyless hybrid vision engine (`identifyObject`, `filterScanTranslations`) with cloud cascade + local catalog fallback. |
+| `src/lib/image.ts` | `prepareImage()` — downscales 50 MP Pixel 9 Pro XL photos to `1024px` JPEG (`0.72`) with `capturedAt` ISO timestamp. |
+| `src/lib/tts.ts` | `speakWord()` (normal `0.85x` and slow `0.52x` speeds) and `getVoiceStatus()` for all 5 languages. |
+| `src/lib/speech-recognition.ts` | `comparePronunciation()`, `recognizeSpeech()`, and Expo Go `storeClient` guard. |
+| `src/lib/pronunciation-engine.ts` | 3-attempt Duolingo session manager, `evaluateSingleAttempt()`, and `buildPhoneticChoices()`. |
+| `src/lib/gamification.ts` | `RANKS` (7 tiers), `LANG_RANKS`, `STREAK_MILESTONES` (Weeks 1, 2, 3), and `BADGES` (16 badges). |
+| `src/lib/kamu.ts` | `KAMU_LORE`, `KAMU_LANG_COLORS`, `KAMU_SCREEN_TIPS`, and `getPhotoQuip()`. |
+| `src/lib/srs.ts` | SM-2-lite spaced repetition scheduler (`gradeReview`, `buildSession`, `countDue`). |
+| `src/data/seed.ts` | `MERIT_RIVALS` leaderboard peers and `seedPosts()` with merit metadata and reactions. |
+| `src/store/useAppStore.ts` | Persisted Zustand store (`lingolens-v2`) managing languages, XP, streaks, crowns, milestones, SRS reviews, and posts. |
+| `src/components/Kamu.tsx` | Animated SVG mascot with 8 moods, golden crown, and lens aperture ring. |
+| `src/components/KamuBubble.tsx` | Speech bubble, interactive `KamuGuideBanner`, and Lore modal. |
+| `src/components/WordCard.tsx` | Tri-layer translation card (native script + romanization + phonetic) + slow audio + inline Duolingo pronunciation coach. |
+| `src/components/PostCard.tsx` | Merit Hub post card with author streak/crown badges, language chips, and `🔥 💡 👑` reactions. |
+| `src/components/ShareCard.tsx` | Collectible `1080×1350` PNG card modal and exporter. |
+| `src/app/(tabs)/index.tsx` | Immediate Camera screen with Word of the Day Quest, 1–5 language bar, and quick smart presets. |
+| `src/app/result.tsx` | Photo analysis screen with Crown banner, Kamu's Photo Critique, dynamic 1–5 `WordCard` list, and reward modal. |
+| `src/app/(tabs)/feed.tsx` | Merit Hub screen with Hall of Fame podium, filters, and community posts. |
+| `src/app/(tabs)/profile.tsx` | Profile screen with 1/2/3-Week Streak Trophy Case, streak simulator, 1–5 language toggles, Crowns Vault, Badges, and Rank Path. |
+| `src/app/(tabs)/library.tsx` | Saved vocabulary search across 5 scripts + romanizations, category filters, and SRS banner. |
+| `src/app/review.tsx` | Spaced-repetition flashcard review session. |
+| `src/app/settings.tsx` | Identity, 1–5 language selector, offline mode switch, Android TTS voice diagnostics, and Welcome Tour replay. |
+| `src/app/welcome.tsx` | 3-step interactive Kamu introduction tour. |
 
 ---
 
-## 5. Guidelines for Future AI Models & Updates
+## 4. Live Testing & Expo Go Network Configuration
 
-1. **Preserve Expo Go Compatibility**: Before importing any native module not bundled in standard Expo Go, guard it with `Constants.executionEnvironment !== 'storeClient'` (as done in `src/lib/speech-recognition.ts`) and provide a smooth JS/UI fallback.
-2. **Keep All 5 Languages First-Class**: Any new vocabulary, AI prompt, or UI component must support `es`, `en`, `ja`, `hi`, and `zh` with `word` (native script), `romanization`, and `phonetic` fields.
-3. **Maintain 100% English in Repo**: Never introduce non-English identifiers, comments, or UI strings into source files.
-4. **Always Verify Before Committing**:
-   ```bash
-   npx tsc --noEmit
-   npx expo lint
-   ```
-
+- **Local Wi-Fi IPv4**: `192.168.1.195` (when VPN `ProTUN` `10.2.0.2` is active, bind Metro to the Wi-Fi interface using `REACT_NATIVE_PACKAGER_HOSTNAME=192.168.1.195`).
+- **Active Expo Go URL**: `exp://192.168.1.195:8082`
+- **Verification Commands**:
+  ```bash
+  npx tsc --noEmit
+  npx expo lint
+  ```

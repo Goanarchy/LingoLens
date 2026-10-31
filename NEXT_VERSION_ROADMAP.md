@@ -1,70 +1,44 @@
-# Next Version — Roadmap & Backlog
+# LingoLens — Roadmap, Evolution History & Backlog
 
-**LingoLens — One photo, five languages**
+**LingoLens — Snap photos, earn crowns, and master five languages (`ES · EN · JA · HI · ZH`)**
 
-Current release: **v1.1.0 "Learning Loop"**. This document tracks what shipped and what comes next.
-
-Scope and version number are decided together:
-
-- **PATCH (1.0.x):** fixes only, no new features.
-- **MINOR (1.1.0):** batch of compatible features.
-- **MAJOR (2.0.0):** architecture or experience change (real backend, redesign, new modes).
-
-Market context and competitor analysis: [MARKET_RESEARCH.md](./MARKET_RESEARCH.md).
+Current release: **v2.0.0 · "Google Pixel 9 Pro XL & Multi-Agent Polyglot Edition"** (shipped).
+Market context and competitor analysis: [`MARKET_RESEARCH.md`](./MARKET_RESEARCH.md).
+Full technical context for AI models: [`PROJECT_CONTEXT.md`](./PROJECT_CONTEXT.md).
 
 ---
 
-## v1.1.0 — "Learning Loop" (shipped)
+## 1. Release History (From Inception to v2.0.0)
 
-The research is consistent: identifying objects is the hook, but **retention comes from reviewing what you collected**. Every direct competitor paywalls the scan after 2–5 uses; LingoLens keeps it unlimited and free, and wins on practice, personality and polish.
+### v1.0.0 — "Initial Camera-to-5-Languages Prototype" (Shipped)
+- Keyless vision identification (`Qwen2.5-VL` on OVHcloud AI Endpoints) with local offline catalog fallback.
+- 50 MP image downscaling to `1024px` JPEG (`src/lib/image.ts`) to prevent memory crashes on high-resolution sensors.
+- Basic 5-language cards, native TTS playback, XP ranks, and local persistence (`zustand` + `AsyncStorage`).
 
-### Wave 1 — Shipped in v1.1.0
+### v1.1.0 — "Learning Loop" (Shipped)
+| # | Feature | Implementation |
+|---|---|---|
+| W1 | **Interactive Welcome Tour** | 3-step intro route (`/welcome`) with Kamu mascot |
+| W2 | **Original SVG Mascot (`Kamu`)** | Code-drawn chameleon (`react-native-svg`) with zero binary bloat |
+| W3 | **Searchable Vocabulary Library** | `/library` tab with search, category chips, and favorites |
+| W4 | **Spaced-Repetition Flashcards** | SM-2-lite scheduler in `src/lib/srs.ts` + `/review` screen |
+| W5 | **Shareable Collectible Card** | `1080×1350` PNG card export (`react-native-view-shot` + `expo-sharing`) |
+| W6 | **Daily Word + Haptics** | Deterministic daily word selection + `expo-haptics` tactile feedback |
 
-| # | Feature | Why | Free / Expo Go implementation |
-|---|---|---|---|
-| W1 | **First-run intro** (3 screens + demo scan before the camera permission) | Competitors lose users at permission and paywall walls | Static onboarding route, `expo-localization` for the default language, local flag in the store |
-| W2 | **Original mascot** drawn in code | Duolingo proves personality drives return; no licensing cost | `react-native-svg` + Reanimated 4; zero binary assets |
-| W3 | **Library with search, filters and favorites** | A collection you cannot search is not a collection | New `/library` route over the existing `learned` array |
-| W4 | **Spaced-repetition review (flashcards)** | Turns scanning into retention | Local scheduler (SM-2-lite) in `lib/srs.ts`; 3 grade buttons; XP and streak-safe |
-| W5 | **Shareable word card** | Free growth loop, no accounts | `react-native-view-shot` + `expo-sharing` (both in Expo Go) |
-| W6 | **Daily word + haptics** | Gives the camera a reason today; tactile feedback | Deterministic local pick from the catalog, `expo-haptics` |
-| W7 | **Accessibility pass** | Rare in this category, free to add | Accessibility labels, dynamic type, reduced-motion support |
-| W8 | **CI + tests** | Keeps the repo trustworthy | GitHub Actions (`tsc`, lint, doctor) + Jest for XP/ranks/SRS — **not shipped in 1.1.0**; planned for 1.2.0 |
-
-### Wave 2 — v1.2.0 candidates
-
-- Pronunciation coach: slow/normal playback, syllable emphasis, record-and-compare (`expo-audio`).
-- Opt-in local daily reminder (`expo-notifications`, local only, capped, quiet hours).
-- Export/import progress (`expo-file-system` + `expo-document-picker` + `expo-sharing`).
-- Brand identity: final icon and splash.
-- Language selection from 2 to 10.
-- Themed weekly scan challenges.
-
-### Wave 3 — v2.0.0 candidates
-
-- Shared feed with a real backend (Supabase free tier, anonymous auth).
-- Server-side XP validation and moderation.
-- Signed APK/AAB via EAS Build.
-
-### Not possible in Expo Go (documented, not bugs)
-
-- Android home-screen widget — requires a development build.
-- On-device ML Kit labeling/translation — requires a development build.
-- Exact-time alarms on Android 12+ — requires a manifest change.
+### v2.0.0 — "Pixel 9 Pro XL, 5-Script Engine, Duolingo Voice Coach & Merit Hub" (Shipped)
+| Agent Phase | Shipped Deliverable | Key Files |
+|---|---|---|
+| **Agent 1: Architecture & Vision Audit** | Optimized 50 MP sensor pipeline for **Google Pixel 9 Pro XL** in **Expo Go**; hybrid vision AI now evaluates **Word of the Day** matches (`dailyMatch`) and generates object-specific mascot commentary (`kamuQuip`). | `src/lib/image.ts`, `src/lib/vision.ts`, `src/lib/demoCatalog.ts` |
+| **Agent 2: Immediate Camera, 5-Script Engine & Duolingo Pronunciation** | App launches **immediately onto the active Camera screen** (`src/app/(tabs)/index.tsx`). Dynamic **1-to-5 simultaneous language engine** for **Spanish (`es`), English (`en`), Japanese (`ja`), Hindi (`hi`), and Mandarin (`zh`)** showing native script, romanization (*Rōmaji, Transliteration, Pinyin*), phonetic guide, normal/slow (`🐢 0.52x`) TTS, and a **Duolingo-style pronunciation test** (`>= 75%` pass threshold, 3-attempt rule, syllable feedback, XP awarded strictly on pass). | `src/app/(tabs)/index.tsx`, `src/app/result.tsx`, `src/lib/languages.ts`, `src/lib/pronunciation-engine.ts`, `src/lib/speech-recognition.ts`, `src/components/WordCard.tsx` |
+| **Agent 3: Crowns, 1/2/3-Week Streaks & Merit Social Network** | **Daily Photo Crowns** (`Bronze` → `Silver` → `Gold`) for catching the Word of the Day; unlockable consistency trophies for **1 Week (7d · +100 XP)**, **2 Weeks (14d · +250 XP)**, and **3 Weeks (21d · +500 XP · Three-Week Dynasty)**; **Merit Hub** social leaderboard & feed with reactions (`🔥`, `💡`, `👑`). | `src/lib/gamification.ts`, `src/store/useAppStore.ts`, `src/app/(tabs)/feed.tsx`, `src/app/(tabs)/profile.tsx`, `src/components/PostCard.tsx` |
+| **Agent 4: Mascot Evolution (`Kamu`)** | Full origin story (`KAMU_LORE`), 8 animated SVG moods (including `'excited'` and `'crowned'`), optical lens-eye aperture ring, royal golden crown SVG, contextual `KamuGuideBanner` across tabs, and funny **photo-specific comments (`kamuQuip`)** on every capture. | `src/lib/kamu.ts`, `src/components/Kamu.tsx`, `src/components/KamuBubble.tsx` |
+| **Agent 5: QA, Expo Go Safety & GitHub Sync** | 100% English codebase & docs, `Constants.executionEnvironment === 'storeClient'` guard for Expo Go, `0` TypeScript errors, `0` ESLint warnings, synced to `origin/main`. | `app.json`, `AGENTS.md`, `PROJECT_CONTEXT.md`, `README.md`, `RELEASE_NOTES.md` |
 
 ---
 
-## Naming
+## 2. Future Backlog (v2.1.0+ Candidates)
 
-Several App Store apps already use "LingoLens", at least one with the same camera→object→languages concept. Before any store submission the name should be changed or qualified; the GitHub repository can keep its current name meanwhile.
-
----
-
-## Version criteria
-
-| Scope | Version |
-|---|---|
-| Fixes for 1.0.0 only | 1.0.1 |
-| Wave 1 (intro, mascot, library, review, share, daily word, accessibility) | 1.1.0 |
-| Wave 1 + Wave 2 | 1.2.0 |
-| Includes Wave 3 (backend) | 2.0.0 |
+- **Opt-in Local Daily Quest Reminder**: Local scheduled notification (`expo-notifications`) reminding the user of today's Word of the Day to protect their 1/2/3-week photo streak.
+- **JSON Progress Backup & Restore**: Export/import full `lingolens-v2` state (`learned`, `crowns`, `unlockedMilestones`, `reviews`) via `expo-file-system` + `expo-sharing`.
+- **Cloud Merit Sync (Optional)**: Optional anonymous cloud sync (e.g., Supabase free tier) for global Merit Hub leaderboards while keeping offline-first local storage as default.
+- **Standalone Dev Build / APK via EAS**: Optional native build (`eas build`) enabling continuous hardware speech streaming alongside the Expo Go guided verifier.
