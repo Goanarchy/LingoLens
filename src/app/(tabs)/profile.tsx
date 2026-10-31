@@ -1,23 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BadgeTile } from '@/components/BadgeTile';
+import { KamuGuideBanner } from '@/components/KamuBubble';
 import { Screen } from '@/components/Screen';
-import { XPBar } from '@/components/XPBar';
 import { Chip, GhostButton, IconButton, SectionTitle } from '@/components/ui';
+import { XPBar } from '@/components/XPBar';
 import {
   BADGES,
   RANKS,
+  STREAK_MILESTONES,
   countByLanguage,
-  countLanguages,
   langRankInfo,
   rankForXp,
+  type BadgeTier,
 } from '@/lib/gamification';
-import { LANGUAGES } from '@/lib/languages';
+import { LANGUAGES, type LangCode } from '@/lib/languages';
 import { useAppStore } from '@/store/useAppStore';
 import { colors, radius, spacing } from '@/theme';
+
+const TIER_TINT: Record<BadgeTier, string> = {
+  bronze: '#E0A66B',
+  silver: '#C7D2E1',
+  gold: '#FFC46B',
+  legend: '#FFD700',
+};
 
 export default function ProfileScreen() {
   const displayName = useAppStore((state) => state.displayName);
@@ -25,19 +35,38 @@ export default function ProfileScreen() {
   const learned = useAppStore((state) => state.learned);
   const badges = useAppStore((state) => state.badges);
   const stats = useAppStore((state) => state.stats);
+  const learningLangs = useAppStore((state) => state.learningLangs);
+  const toggleLearningLang = useAppStore((state) => state.toggleLearningLang);
+  const scoreboard = useAppStore((state) => state.scoreboard);
+  const crowns = useAppStore((state) => state.crowns);
+  const unlockedMilestones = useAppStore((state) => state.unlockedMilestones);
+  const simulateStreakMilestone = useAppStore((state) => state.simulateStreakMilestone);
 
   const rankInfo = rankForXp(xp);
   const words = learned.length;
-  const langs = countLanguages(learned.map((entry) => entry.words));
   const perLanguage = countByLanguage(learned.map((entry) => entry.words));
   const unlockedCount = Object.keys(badges).length;
   const initials = displayName.slice(0, 2).toUpperCase();
 
+  function handleToggleLang(code: LangCode) {
+    if (Platform.OS !== 'web') {
+      Haptics.selectionAsync().catch(() => undefined);
+    }
+    toggleLearningLang(code);
+  }
+
+  function handleSimulateMilestone(days: 7 | 14 | 21) {
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    }
+    simulateStreakMilestone(days);
+  }
+
   const statsTiles = [
-    { label: 'Palabras', value: words, icon: 'bookmark' as const, tint: colors.accent },
-    { label: 'Idiomas', value: langs, icon: 'globe' as const, tint: colors.violet },
-    { label: 'Racha', value: stats.streak, icon: 'flame' as const, tint: colors.amber },
-    { label: 'Audios', value: stats.audioPlays, icon: 'volume-high' as const, tint: colors.pink },
+    { label: 'Photo Streak', value: `${stats.photoStreak}d`, icon: 'flame' as const, tint: colors.amber },
+    { label: 'Daily Crowns', value: crowns.length, icon: 'trophy' as const, tint: colors.accent },
+    { label: 'Voice Passes', value: stats.pronunciationPasses, icon: 'mic' as const, tint: colors.pink },
+    { label: 'Saved Words', value: words, icon: 'bookmark' as const, tint: colors.violet },
   ];
 
   return (
@@ -51,7 +80,7 @@ export default function ProfileScreen() {
             <View>
               <Text style={styles.name}>{displayName}</Text>
               <Text style={styles.rankLine}>
-                {rankInfo.rank.emoji} {rankInfo.rank.name} · Nivel {rankInfo.level}
+                {rankInfo.rank.emoji} {rankInfo.rank.name} · Level {rankInfo.level}
               </Text>
             </View>
           </View>
@@ -59,23 +88,30 @@ export default function ProfileScreen() {
             icon="settings-outline"
             size={38}
             background="rgba(255,255,255,0.05)"
-            accessibilityLabel="Ajustes"
+            accessibilityLabel="Settings"
             onPress={() => router.push('/settings')}
           />
         </View>
 
+        <View style={{ marginBottom: spacing.md }}>
+          <KamuGuideBanner screen="profile" />
+        </View>
+
+        {/* Rank & XP Card */}
         <View style={styles.rankCard}>
           <View style={styles.rankTop}>
             <View style={styles.rankEmojiWrap}>
               <Text style={styles.rankEmoji}>{rankInfo.rank.emoji}</Text>
             </View>
             <View style={styles.rankTextWrap}>
-              <Text style={[styles.rankName, { color: rankInfo.rank.color }]}>{rankInfo.rank.name}</Text>
+              <Text style={[styles.rankName, { color: rankInfo.rank.color }]}>
+                {rankInfo.rank.name}
+              </Text>
               <Text style={styles.rankBlurb}>{rankInfo.rank.blurb}</Text>
             </View>
             <View style={styles.xpBox}>
               <Text style={styles.xpValue}>{xp}</Text>
-              <Text style={styles.xpLabel}>XP</Text>
+              <Text style={styles.xpLabel}>TOTAL XP</Text>
             </View>
           </View>
 
@@ -84,8 +120,8 @@ export default function ProfileScreen() {
           <View style={styles.rankFooter}>
             <Text style={styles.rankFooterText}>
               {rankInfo.next
-                ? `Faltan ${rankInfo.xpToNext} XP para ${rankInfo.next.name}`
-                : 'Rango máximo alcanzado · Leyenda'}
+                ? `${rankInfo.xpToNext} XP until ${rankInfo.next.name}`
+                : 'Maximum rank reached · Polyglot Legend'}
             </Text>
             <Text style={styles.rankFooterHint}>
               {rankInfo.next ? `${rankInfo.next.xp} XP` : '3200 XP'}
@@ -93,6 +129,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Core Gamification Metrics */}
         <View style={styles.statsGrid}>
           {statsTiles.map((tile) => (
             <View key={tile.label} style={styles.statCard}>
@@ -103,66 +140,141 @@ export default function ProfileScreen() {
           ))}
         </View>
 
+        {/* 1-Week, 2-Week & 3-Week Photo Consistency Milestones */}
         <View style={styles.section}>
           <SectionTitle
             right={
               <Chip
-                label={learned.length > 0 ? `${learned.length} guardadas` : 'Vacío'}
-                color={colors.textMuted}
+                label={`Best: ${stats.bestPhotoStreak}d`}
+                color={colors.amber}
+                background={colors.amberSoft}
               />
             }>
-            Tu colección
+            Photo Streak Trophies (1, 2 & 3 Weeks)
           </SectionTitle>
 
-          {learned.length === 0 ? (
-            <View style={styles.emptyCollection}>
-              <Text style={styles.emptyEmoji}>🧭</Text>
-              <Text style={styles.emptyTitle}>Tu primera palabra te espera</Text>
-              <Text style={styles.emptyText}>
-                Escanea un objeto y guárdalo para empezar a subir de rango.
-              </Text>
-              <GhostButton
-                label="Escanear ahora"
-                icon="camera"
-                onPress={() => router.push('/')}
-                style={styles.emptyButton}
-              />
-            </View>
-          ) : (
-            <View style={styles.collection}>
-              {learned.slice(0, 10).map((entry) => (
-                <View key={entry.id} style={styles.wordChip}>
-                  <Text style={styles.wordEmoji}>{entry.emoji}</Text>
-                  <Text style={styles.wordText}>{entry.object}</Text>
-                </View>
-              ))}
-              <GhostButton
-                label="Abrir biblioteca"
-                icon="albums-outline"
-                onPress={() => router.push('/library')}
-                style={styles.libraryButton}
-              />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <SectionTitle>Progreso por idioma</SectionTitle>
-          <View style={styles.languageCard}>
-            {LANGUAGES.map((language, index) => {
-              const count = perLanguage[language.code] ?? 0;
-              const info = langRankInfo(count);
+          <View style={styles.milestoneList}>
+            {STREAK_MILESTONES.map((milestone) => {
+              const tint = TIER_TINT[milestone.tier];
+              const unlocked =
+                Boolean(unlockedMilestones[milestone.id]) ||
+                stats.bestPhotoStreak >= milestone.daysRequired;
+              const progress = Math.min(1, stats.photoStreak / milestone.daysRequired);
               return (
                 <View
+                  key={milestone.id}
+                  style={[
+                    styles.milestoneCard,
+                    unlocked && {
+                      borderColor: tint,
+                      backgroundColor: 'rgba(255,255,255,0.04)',
+                    },
+                  ]}>
+                  <View style={styles.milestoneTop}>
+                    <Text style={styles.milestoneEmoji}>{milestone.emoji}</Text>
+                    <View style={styles.milestoneTextWrap}>
+                      <View style={styles.milestoneTitleRow}>
+                        <Text
+                          style={[
+                            styles.milestoneTitle,
+                            unlocked && { color: tint },
+                          ]}>
+                          {milestone.name}
+                        </Text>
+                        <Text style={styles.milestoneXp}>+{milestone.xpBonus} XP</Text>
+                      </View>
+                      <Text style={styles.milestoneSub}>{milestone.description}</Text>
+                    </View>
+                  </View>
+                  <XPBar
+                    value={progress * 100}
+                    max={100}
+                    tint={tint}
+                    height={6}
+                    style={{ marginTop: spacing.sm }}
+                  />
+                  <View style={styles.milestoneFooter}>
+                    <Text style={styles.milestoneProgressText}>
+                      {unlocked
+                        ? `✓ Unlocked · Title: ${milestone.titleUnlocked}`
+                        : `${stats.photoStreak}/${milestone.daysRequired} consecutive photo days`}
+                    </Text>
+                    <Text style={styles.milestoneTierTag}>{milestone.tier.toUpperCase()}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Instant Demo Triggers for 1W / 2W / 3W Streak Testing */}
+          <View style={styles.simRow}>
+            <Text style={styles.simLabel}>Test Streak Rewards:</Text>
+            {([7, 14, 21] as const).map((days) => (
+              <Pressable
+                key={days}
+                onPress={() => handleSimulateMilestone(days)}
+                style={({ pressed }) => [
+                  styles.simBtn,
+                  stats.photoStreak >= days && styles.simBtnActive,
+                  { opacity: pressed ? 0.7 : 1 },
+                ]}>
+                <Text
+                  style={[
+                    styles.simBtnText,
+                    stats.photoStreak >= days && styles.simBtnTextActive,
+                  ]}>
+                  🔥 {days / 7}W ({days}d)
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {/* Interactive Dynamic Language Selector (1 to 5 Languages) */}
+        <View style={styles.section}>
+          <SectionTitle
+            right={
+              <Chip
+                label={`${learningLangs.length}/5 Active`}
+                color={colors.accent}
+                background={colors.accentSoft}
+              />
+            }>
+            Active Study Languages (Tap to Toggle)
+          </SectionTitle>
+          <View style={styles.languageCard}>
+            {LANGUAGES.map((language, index) => {
+              const selected = learningLangs.includes(language.code);
+              const count = perLanguage[language.code] ?? 0;
+              const langXp = scoreboard[language.code] ?? 0;
+              const info = langRankInfo(count);
+              return (
+                <Pressable
                   key={language.code}
+                  onPress={() => handleToggleLang(language.code)}
                   style={[styles.languageRow, index > 0 && styles.languageRowBorder]}>
                   <Text style={styles.languageFlag}>{language.flag}</Text>
                   <View style={styles.languageBody}>
                     <View style={styles.languageTop}>
-                      <Text style={styles.languageName}>{language.name}</Text>
-                      <Text style={styles.languageRank}>
-                        {info.rank.emoji} {info.rank.name} · {count}
+                      <Text style={styles.languageName}>
+                        {language.name} ({language.native})
                       </Text>
+                      <View
+                        style={[
+                          styles.activeBadge,
+                          selected && {
+                            backgroundColor: `${language.tint}22`,
+                            borderColor: language.tint,
+                          },
+                        ]}>
+                        <Text
+                          style={[
+                            styles.activeBadgeText,
+                            selected && { color: language.tint },
+                          ]}>
+                          {selected ? 'ACTIVE' : 'OFF'}
+                        </Text>
+                      </View>
                     </View>
                     <XPBar
                       value={info.progress * 100}
@@ -172,17 +284,65 @@ export default function ProfileScreen() {
                       style={styles.languageBar}
                     />
                     <Text style={styles.languageHint}>
-                      {info.next
-                        ? `${info.remaining} palabras para ${info.next.name}`
-                        : 'Rango máximo en este idioma'}
+                      {info.rank.emoji} {info.rank.name} · {count} words · {langXp} Pronunciation XP
                     </Text>
                   </View>
-                </View>
+                </Pressable>
               );
             })}
           </View>
+          <Text style={styles.languageHelperNote}>
+            Select between 1 and 5 languages. Every photo scan and pronunciation test dynamically
+            adapts to your active selection.
+          </Text>
         </View>
 
+        {/* Daily Photo Crowns Vault */}
+        <View style={styles.section}>
+          <SectionTitle
+            right={
+              <Chip
+                label={`${crowns.length} earned`}
+                color={colors.amber}
+                background={colors.amberSoft}
+              />
+            }>
+            Word of the Day Crowns
+          </SectionTitle>
+
+          {crowns.length === 0 ? (
+            <View style={styles.emptyCollection}>
+              <Text style={styles.emptyEmoji}>👑</Text>
+              <Text style={styles.emptyTitle}>Earn Your First Daily Crown</Text>
+              <Text style={styles.emptyText}>
+                Photograph today’s Word of the Day on the Camera screen to unlock a Bronze Crown,
+                save it for Silver, and pass the voice test for Gold!
+              </Text>
+              <GhostButton
+                label="Open Camera Quest"
+                icon="camera"
+                onPress={() => router.push('/(tabs)')}
+                style={styles.emptyButton}
+              />
+            </View>
+          ) : (
+            <View style={styles.collection}>
+              {crowns.slice(0, 8).map((crown) => (
+                <View key={`${crown.day}-${crown.object}`} style={styles.crownChip}>
+                  <Text style={styles.wordEmoji}>👑</Text>
+                  <View>
+                    <Text style={styles.wordText}>
+                      {crown.object} ({crown.tier.toUpperCase()})
+                    </Text>
+                    <Text style={styles.crownDate}>{crown.day}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Badges Grid */}
         <View style={styles.section}>
           <SectionTitle
             right={
@@ -190,7 +350,7 @@ export default function ProfileScreen() {
                 {unlockedCount}/{BADGES.length}
               </Text>
             }>
-            Badges
+            Achievement Badges
           </SectionTitle>
           <View style={styles.badges}>
             {BADGES.map((badge) => (
@@ -201,8 +361,9 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Rank Progression Path */}
         <View style={styles.section}>
-          <SectionTitle>Camino de rangos</SectionTitle>
+          <SectionTitle>Polyglot Rank Path</SectionTitle>
           <View style={styles.pathCard}>
             {RANKS.map((rank, index) => {
               const reached = xp >= rank.xp;
@@ -219,7 +380,12 @@ export default function ProfileScreen() {
                       ]}
                     />
                     {index < RANKS.length - 1 ? (
-                      <View style={[styles.pathLine, reached && { backgroundColor: `${rank.color}66` }]} />
+                      <View
+                        style={[
+                          styles.pathLine,
+                          reached && { backgroundColor: `${rank.color}66` },
+                        ]}
+                      />
                     ) : null}
                   </View>
                   <View style={styles.pathBody}>
@@ -236,7 +402,7 @@ export default function ProfileScreen() {
         </View>
 
         <GhostButton
-          label="Ajustes, IA y voces"
+          label="Settings, Vision AI & Voice Diagnostics"
           icon="settings-outline"
           onPress={() => router.push('/settings')}
           style={styles.settingsButton}
@@ -256,7 +422,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   identity: {
     flexDirection: 'row',
@@ -370,7 +536,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     color: colors.text,
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '800',
     marginTop: 2,
   },
@@ -378,11 +544,102 @@ const styles = StyleSheet.create({
     color: colors.textDim,
     fontSize: 9,
     fontWeight: '700',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   section: {
     marginTop: spacing.xl,
+  },
+  milestoneList: {
+    gap: spacing.sm,
+  },
+  milestoneCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+  },
+  milestoneTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  milestoneEmoji: {
+    fontSize: 28,
+  },
+  milestoneTextWrap: {
+    flex: 1,
+  },
+  milestoneTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  milestoneTitle: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  milestoneXp: {
+    color: colors.amber,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  milestoneSub: {
+    color: colors.textMuted,
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 2,
+  },
+  milestoneFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  milestoneProgressText: {
+    color: colors.textDim,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  milestoneTierTag: {
+    color: colors.textMuted,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  simRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.sm,
+  },
+  simLabel: {
+    color: colors.textDim,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  simBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  simBtnActive: {
+    borderColor: colors.amber,
+    backgroundColor: colors.amberSoft,
+  },
+  simBtnText: {
+    color: colors.textMuted,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  simBtnTextActive: {
+    color: colors.amber,
+    fontWeight: '800',
   },
   emptyCollection: {
     backgroundColor: colors.card,
@@ -417,28 +674,29 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
-  wordChip: {
+  crownChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderColor: 'rgba(255,196,107,0.35)',
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
   },
   wordEmoji: {
-    fontSize: 14,
+    fontSize: 18,
   },
   wordText: {
     color: colors.text,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    textTransform: 'capitalize',
   },
-  libraryButton: {
-    marginTop: spacing.md,
-    alignSelf: 'stretch',
+  crownDate: {
+    color: colors.textDim,
+    fontSize: 9,
   },
   languageCard: {
     backgroundColor: colors.card,
@@ -458,7 +716,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   languageFlag: {
-    fontSize: 20,
+    fontSize: 22,
   },
   languageBody: {
     flex: 1,
@@ -474,17 +732,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  languageRank: {
-    color: colors.textMuted,
-    fontSize: 10,
-    fontWeight: '600',
+  activeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  activeBadgeText: {
+    color: colors.textDim,
+    fontSize: 9,
+    fontWeight: '800',
   },
   languageBar: {
     marginBottom: 5,
   },
   languageHint: {
     color: colors.textDim,
-    fontSize: 9,
+    fontSize: 10,
+  },
+  languageHelperNote: {
+    color: colors.textMuted,
+    fontSize: 11,
+    marginTop: spacing.sm,
+    lineHeight: 16,
   },
   badgeCount: {
     color: colors.textMuted,

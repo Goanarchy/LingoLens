@@ -11,23 +11,22 @@ import {
 } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
-import { LANGUAGES } from '@/lib/languages';
+import { LANGUAGES, type LangCode } from '@/lib/languages';
 import { colors, radius, spacing } from '@/theme';
 
 import { Kamu } from './Kamu';
 import { GhostButton, PrimaryButton } from './ui';
 
-/** Datos mínimos para dibujar una tarjeta compartible. */
+/** Minimal payload needed to render a shareable word card. */
 export type ShareWord = {
   object: string;
   emoji: string;
   category: string;
-  words: Record<string, string>;
+  words: Partial<Record<LangCode, string>>;
 };
 
 /**
- * Tarjeta de palabra capturada como imagen y compartida con la hoja del sistema.
- * No usa cuentas ni servicios: todo ocurre en el dispositivo.
+ * Generates a branded PNG word card on-device and opens the native share sheet.
  */
 export function ShareCardModal({
   word,
@@ -47,16 +46,16 @@ export function ShareCardModal({
     try {
       const available = await Sharing.isAvailableAsync();
       if (!available) {
-        setError('Tu dispositivo no permite compartir archivos.');
+        setError('Sharing is not available on this device.');
         return;
       }
       const uri = await captureRef(cardRef, { format: 'png', quality: 1, result: 'tmpfile' });
       await Sharing.shareAsync(uri, {
         mimeType: 'image/png',
-        dialogTitle: word ? `Compartir ${word.object}` : 'Compartir tarjeta',
+        dialogTitle: word ? `Share ${word.object}` : 'Share LingoLens card',
       });
     } catch {
-      setError('No se pudo crear la tarjeta. Inténtalo otra vez.');
+      setError('Could not render the share card. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -73,8 +72,8 @@ export function ShareCardModal({
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Tu tarjeta</Text>
-            <Pressable onPress={handleClose} hitSlop={10} accessibilityLabel="Cerrar tarjeta">
+            <Text style={styles.sheetTitle}>Shareable Discovery Card</Text>
+            <Pressable onPress={handleClose} hitSlop={10} accessibilityLabel="Close share card">
               <Ionicons name="close" size={20} color={colors.textMuted} />
             </Pressable>
           </View>
@@ -104,7 +103,7 @@ export function ShareCardModal({
                   return (
                     <View key={language.code} style={styles.row}>
                       <Text style={styles.flag}>{language.flag}</Text>
-                      <Text style={styles.language}>{language.native}</Text>
+                      <Text style={styles.language}>{language.name}</Text>
                       <Text style={[styles.value, { color: language.tint }]} numberOfLines={1}>
                         {value}
                       </Text>
@@ -114,8 +113,8 @@ export function ShareCardModal({
               </View>
 
               <View style={styles.footer}>
-                <Kamu size={46} color={colors.accent} animated={false} />
-                <Text style={styles.footerText}>Aprendido con Kamu</Text>
+                <Kamu size={46} color={colors.accent} crowned animated={false} />
+                <Text style={styles.footerText}>Discovered with Kamu</Text>
                 <Text style={styles.footerMark}>lingolens</Text>
               </View>
             </View>
@@ -124,14 +123,14 @@ export function ShareCardModal({
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <PrimaryButton
-            label={busy ? 'Creando tarjeta…' : 'Compartir imagen'}
+            label={busy ? 'Rendering card…' : 'Share Image'}
             icon={busy ? undefined : 'share-outline'}
             onPress={handleShare}
             loading={busy}
             disabled={!word}
             style={styles.shareButton}
           />
-          <GhostButton label="Cerrar" onPress={handleClose} disabled={busy} style={styles.closeButton} />
+          <GhostButton label="Close" onPress={handleClose} disabled={busy} style={styles.closeButton} />
 
           {busy ? (
             <View style={styles.busy}>
@@ -248,7 +247,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
-    width: 62,
+    width: 72,
   },
   value: {
     flex: 1,

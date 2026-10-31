@@ -8,7 +8,7 @@ function iso(timestamp: number): string {
   return new Date(timestamp).toISOString();
 }
 
-/** Estado inicial: la palabra queda disponible para repasar de inmediato. */
+/** Initial state: a newly saved word is immediately eligible for review. */
 export function initialReview(now = Date.now()): ReviewState {
   return { interval: 0, ease: 2.5, due: iso(now), reps: 0, lapses: 0 };
 }
@@ -19,11 +19,11 @@ export function isDue(state: ReviewState, now = Date.now()): boolean {
 }
 
 /**
- * Programador tipo SM-2 simplificado.
+ * Lightweight SM-2 spaced-repetition scheduler.
  *
- * - `again`: vuelve a la cola de hoy y baja la facilidad.
- * - `good`: multiplica el intervalo por la facilidad.
- * - `easy`: multiplica por la facilidad y un extra del 30 %.
+ * - `again`: returns to today's queue and lowers ease.
+ * - `good`: multiplies the interval by the ease factor.
+ * - `easy`: multiplies by ease plus a 30% bonus.
  */
 export function gradeReview(
   current: ReviewState | undefined,
@@ -52,7 +52,7 @@ export function gradeReview(
   return { interval, ease, due: iso(due), reps, lapses };
 }
 
-/** XP que otorga cada calificación al repasar. */
+/** XP awarded per flashcard grade during a review session. */
 export const REVIEW_XP: Record<ReviewGrade, number> = {
   again: 1,
   good: 4,
@@ -64,19 +64,22 @@ export type DueWord = {
   state: ReviewState;
 };
 
-/** Palabras pendientes de repaso, primero las más atrasadas. */
+/** Returns words currently due for review, ordered most overdue first. */
 export function dueWords(
   words: LearnedWord[],
   reviews: Record<string, ReviewState>,
   now = Date.now(),
 ): DueWord[] {
   return words
-    .map((word) => ({ word, state: reviews[word.id] ?? initialReview(new Date(word.createdAt).getTime()) }))
+    .map((word) => ({
+      word,
+      state: reviews[word.id] ?? initialReview(new Date(word.createdAt).getTime()),
+    }))
     .filter(({ state }) => isDue(state, now))
     .sort((a, b) => new Date(a.state.due).getTime() - new Date(b.state.due).getTime());
 }
 
-/** Cuántas palabras están listas para repasar hoy. */
+/** Count of words ready for review right now. */
 export function countDue(
   words: LearnedWord[],
   reviews: Record<string, ReviewState>,
@@ -85,7 +88,7 @@ export function countDue(
   return dueWords(words, reviews, now).length;
 }
 
-/** Construye una sesión de repaso de tamaño fijo. */
+/** Builds a review session of up to `size` cards. */
 export function buildSession(
   words: LearnedWord[],
   reviews: Record<string, ReviewState>,
@@ -97,6 +100,9 @@ export function buildSession(
   const seen = new Set(due.map((entry) => entry.word.id));
   const extra = words
     .filter((word) => !seen.has(word.id))
-    .map((word) => ({ word, state: reviews[word.id] ?? initialReview(new Date(word.createdAt).getTime()) }));
+    .map((word) => ({
+      word,
+      state: reviews[word.id] ?? initialReview(new Date(word.createdAt).getTime()),
+    }));
   return [...due, ...extra].slice(0, size);
 }

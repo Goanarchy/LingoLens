@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, Tabs } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useAppStore } from '@/store/useAppStore';
@@ -7,19 +7,14 @@ import { colors } from '@/theme';
 
 export default function TabsLayout() {
   const hydrated = useAppStore((state) => state.hydrated);
-  const onboarded = useAppStore((state) => state.onboarded);
 
-  // La intro se muestra una sola vez, antes de la primera pantalla real.
+  // Open directly onto the Camera tab as soon as persisted state hydrates.
   if (!hydrated) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
         <ActivityIndicator color={colors.accent} />
       </View>
     );
-  }
-
-  if (!onboarded) {
-    return <Redirect href="/welcome" />;
   }
 
   return (
@@ -46,28 +41,28 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Escanear',
-          tabBarIcon: ({ color, size }) => <Ionicons name="scan" size={size} color={color as string} />,
+          title: 'Camera',
+          tabBarIcon: ({ color, size }) => <Ionicons name="camera" size={size} color={color as string} />,
         }}
       />
       <Tabs.Screen
         name="library"
         options={{
-          title: 'Biblioteca',
+          title: 'Library',
           tabBarIcon: ({ color, size }) => <Ionicons name="albums" size={size} color={color as string} />,
         }}
       />
       <Tabs.Screen
         name="feed"
         options={{
-          title: 'Comunidad',
-          tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color as string} />,
+          title: 'Merit Hub',
+          tabBarIcon: ({ color, size }) => <Ionicons name="trophy" size={size} color={color as string} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Perfil',
+          title: 'Profile',
           tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color as string} />,
         }}
       />

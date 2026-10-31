@@ -2,7 +2,7 @@
   "expo": {
     "name": "LingoLens",
     "slug": "lingolens",
-    "version": "1.1.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "lingolens",
@@ -39,14 +39,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "LingoLens usa la cámara para identificar objetos y mostrarte su nombre en cinco idiomas.",
+          "cameraPermission": "LingoLens uses your camera to identify objects and teach you their names in Spanish, English, Japanese, Hindi, and Mandarin.",
           "recordAudioAndroid": false
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "LingoLens accede a tus fotos para identificar objetos y traducir sus nombres.",
+          "photosPermission": "LingoLens accesses your photos to identify objects and translate their names into five languages.",
           "microphonePermission": false
         }
       ],

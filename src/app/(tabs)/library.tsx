@@ -14,9 +14,10 @@ import {
 } from 'react-native';
 
 import { Kamu } from '@/components/Kamu';
+import { KamuGuideBanner } from '@/components/KamuBubble';
 import { Screen } from '@/components/Screen';
 import { ShareCardModal, type ShareWord } from '@/components/ShareCard';
-import { IconButton, PrimaryButton, GhostButton } from '@/components/ui';
+import { GhostButton, IconButton, PrimaryButton } from '@/components/ui';
 import { KAMU_EMPTY_LINES, pickLine } from '@/lib/kamu';
 import { LANGUAGES, type LangCode } from '@/lib/languages';
 import { countDue } from '@/lib/srs';
@@ -35,6 +36,7 @@ function hapticSelection() {
 export default function LibraryScreen() {
   const learned = useAppStore((state) => state.learned);
   const reviews = useAppStore((state) => state.reviews);
+  const learningLangs = useAppStore((state) => state.learningLangs);
   const toggleFavorite = useAppStore((state) => state.toggleFavorite);
   const countAudio = useAppStore((state) => state.countAudio);
 
@@ -57,7 +59,10 @@ export default function LibraryScreen() {
       if (!term) return true;
       return (
         word.object.toLowerCase().includes(term) ||
-        Object.values(word.words).some((value) => value.toLowerCase().includes(term))
+        Object.values(word.words).some((value) => (value ?? '').toLowerCase().includes(term)) ||
+        Object.values(word.romanizations ?? {}).some((value) =>
+          (value ?? '').toLowerCase().includes(term),
+        )
       );
     });
   }, [learned, query, onlyFavorites, category]);
@@ -95,11 +100,11 @@ export default function LibraryScreen() {
     <View>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Biblioteca</Text>
+          <Text style={styles.title}>Study Library</Text>
           <Text style={styles.subtitle}>
             {learned.length === 0
-              ? 'Tu colección empieza con una foto'
-              : `${learned.length} ${learned.length === 1 ? 'palabra guardada' : 'palabras guardadas'}`}
+              ? 'Your multilingual collection starts with one photo'
+              : `${learned.length} ${learned.length === 1 ? 'saved word' : 'saved words'} · ${learningLangs.length} active ${learningLangs.length === 1 ? 'language' : 'languages'}`}
           </Text>
         </View>
         <IconButton
@@ -107,25 +112,29 @@ export default function LibraryScreen() {
           size={40}
           background={colors.violetSoft}
           color={colors.violet}
-          accessibilityLabel="Repasar palabras"
+          accessibilityLabel="Review flashcards"
           onPress={() => router.push('/review')}
         />
+      </View>
+
+      <View style={{ marginBottom: spacing.md }}>
+        <KamuGuideBanner screen="library" />
       </View>
 
       {due > 0 ? (
         <Pressable
           onPress={() => router.push('/review')}
           accessibilityRole="button"
-          accessibilityLabel={`Repasar ${due} palabras pendientes`}
+          accessibilityLabel={`Review ${due} due flashcards`}
           style={({ pressed }) => [styles.dueCard, { opacity: pressed ? 0.75 : 1 }]}>
           <View style={styles.dueIcon}>
             <Ionicons name="layers" size={18} color={colors.violet} />
           </View>
           <View style={styles.dueBody}>
             <Text style={styles.dueTitle}>
-              {due} {due === 1 ? 'palabra para repasar' : 'palabras para repasar'}
+              {due} {due === 1 ? 'word ready for review' : 'words ready for review'}
             </Text>
-            <Text style={styles.dueText}>Repaso corto, memoria larga.</Text>
+            <Text style={styles.dueText}>Quick spaced-repetition flashcards (+XP).</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
         </Pressable>
@@ -136,15 +145,15 @@ export default function LibraryScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Buscar en cinco idiomas…"
+          placeholder="Search in English, Español, 日本語, हिन्दी, 中文 or Pinyin…"
           placeholderTextColor={colors.textDim}
           style={styles.searchInput}
           autoCorrect={false}
           returnKeyType="search"
-          accessibilityLabel="Buscar palabras"
+          accessibilityLabel="Search saved vocabulary"
         />
         {query ? (
-          <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityLabel="Borrar búsqueda">
+          <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityLabel="Clear search">
             <Ionicons name="close-circle" size={16} color={colors.textDim} />
           </Pressable>
         ) : null}
@@ -154,12 +163,16 @@ export default function LibraryScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.filters}>
-        <FilterChip label="Todas" active={category === 'all' && !onlyFavorites} onPress={() => {
-          setOnlyFavorites(false);
-          setCategory('all');
-        }} />
         <FilterChip
-          label="★ Favoritas"
+          label="All"
+          active={category === 'all' && !onlyFavorites}
+          onPress={() => {
+            setOnlyFavorites(false);
+            setCategory('all');
+          }}
+        />
+        <FilterChip
+          label="★ Favorites"
           active={onlyFavorites}
           onPress={() => setOnlyFavorites((value) => !value)}
         />
@@ -176,10 +189,10 @@ export default function LibraryScreen() {
       {hasFilters && filtered.length > 0 ? (
         <View style={styles.resultRow}>
           <Text style={styles.resultText}>
-            {filtered.length} {filtered.length === 1 ? 'resultado' : 'resultados'}
+            {filtered.length} {filtered.length === 1 ? 'result' : 'results'}
           </Text>
           <Pressable onPress={clearFilters} hitSlop={8}>
-            <Text style={styles.clearText}>Limpiar filtros</Text>
+            <Text style={styles.clearText}>Clear filters</Text>
           </Pressable>
         </View>
       ) : null}
@@ -195,20 +208,25 @@ export default function LibraryScreen() {
         color={colors.violet}
       />
       <Text style={styles.emptyTitle}>
-        {hasFilters ? 'Nada por aquí' : 'Tu biblioteca está vacía'}
+        {hasFilters ? 'No matching words' : 'Your library is empty'}
       </Text>
       <Text style={styles.emptyText}>
         {hasFilters
-          ? 'Prueba con otra palabra, otro idioma o quita los filtros.'
+          ? 'Try another search term, script, or clear the active category filters.'
           : pickLine(KAMU_EMPTY_LINES, 1)}
       </Text>
       {hasFilters ? (
-        <GhostButton label="Limpiar filtros" icon="close" onPress={clearFilters} style={styles.emptyButton} />
+        <GhostButton
+          label="Clear Filters"
+          icon="close"
+          onPress={clearFilters}
+          style={styles.emptyButton}
+        />
       ) : (
         <PrimaryButton
-          label="Escanear un objeto"
+          label="Snap a Photo"
           icon="camera"
-          onPress={() => router.push('/')}
+          onPress={() => router.push('/(tabs)')}
           style={styles.emptyButton}
         />
       )}
@@ -228,6 +246,7 @@ export default function LibraryScreen() {
         renderItem={({ item }) => (
           <WordRow
             word={item}
+            activeLangs={learningLangs}
             onFavorite={() => handleFavorite(item.id)}
             onShare={() => handleShare(item)}
             onSpeak={handleSpeak}
@@ -266,20 +285,28 @@ function FilterChip({
 
 function WordRow({
   word,
+  activeLangs,
   onFavorite,
   onShare,
   onSpeak,
 }: {
   word: LearnedWord;
+  activeLangs: LangCode[];
   onFavorite: () => void;
   onShare: () => void;
   onSpeak: (value: string, code: LangCode) => void;
 }) {
-  const available = LANGUAGES.filter((language) => Boolean(word.words[language.code]));
+  const available = LANGUAGES.filter(
+    (language) => activeLangs.includes(language.code) && Boolean(word.words[language.code]),
+  );
+  const displayList =
+    available.length > 0
+      ? available
+      : LANGUAGES.filter((language) => Boolean(word.words[language.code]));
   const created = new Date(word.createdAt);
   const dateLabel = Number.isNaN(created.getTime())
     ? ''
-    : created.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+    : created.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
 
   return (
     <View style={styles.card}>
@@ -290,7 +317,7 @@ function WordRow({
             {word.object}
           </Text>
           <Text style={styles.meta}>
-            {word.category} · {available.length} idiomas{dateLabel ? ` · ${dateLabel}` : ''}
+            {word.category} · {displayList.length} languages{dateLabel ? ` · ${dateLabel}` : ''}
           </Text>
         </View>
         <Pressable
@@ -298,7 +325,7 @@ function WordRow({
           hitSlop={8}
           accessibilityRole="button"
           accessibilityState={{ selected: Boolean(word.favorite) }}
-          accessibilityLabel={word.favorite ? 'Quitar de favoritas' : 'Marcar como favorita'}
+          accessibilityLabel={word.favorite ? 'Remove from favorites' : 'Add to favorites'}
           style={({ pressed }) => [styles.smallButton, { opacity: pressed ? 0.6 : 1 }]}>
           <Ionicons
             name={word.favorite ? 'star' : 'star-outline'}
@@ -310,30 +337,37 @@ function WordRow({
           onPress={onShare}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel={`Compartir tarjeta de ${word.object}`}
+          accessibilityLabel={`Share card for ${word.object}`}
           style={({ pressed }) => [styles.smallButton, { opacity: pressed ? 0.6 : 1 }]}>
           <Ionicons name="share-outline" size={19} color={colors.textMuted} />
         </Pressable>
       </View>
 
       <View style={styles.words}>
-        {available.map((language) => (
-          <Pressable
-            key={language.code}
-            onPress={() => onSpeak(word.words[language.code], language.code)}
-            accessibilityRole="button"
-            accessibilityLabel={`Escuchar ${word.words[language.code]} en ${language.name}`}
-            style={({ pressed }) => [
-              styles.wordChip,
-              { borderColor: `${language.tint}33`, opacity: pressed ? 0.65 : 1 },
-            ]}>
-            <Text style={styles.wordFlag}>{language.flag}</Text>
-            <Text style={[styles.wordValue, { color: language.tint }]} numberOfLines={1}>
-              {word.words[language.code]}
-            </Text>
-            <Ionicons name="volume-medium" size={11} color={language.tint} />
-          </Pressable>
-        ))}
+        {displayList.map((language) => {
+          const nativeWord = word.words[language.code] ?? '';
+          const roma = word.romanizations?.[language.code] ?? '';
+          const showRoma =
+            Boolean(roma) && roma.toLowerCase() !== nativeWord.toLowerCase();
+          return (
+            <Pressable
+              key={language.code}
+              onPress={() => onSpeak(nativeWord, language.code)}
+              accessibilityRole="button"
+              accessibilityLabel={`Listen to ${nativeWord} in ${language.name}`}
+              style={({ pressed }) => [
+                styles.wordChip,
+                { borderColor: `${language.tint}33`, opacity: pressed ? 0.65 : 1 },
+              ]}>
+              <Text style={styles.wordFlag}>{language.flag}</Text>
+              <Text style={[styles.wordValue, { color: language.tint }]} numberOfLines={1}>
+                {nativeWord}
+                {showRoma ? ` (${roma})` : ''}
+              </Text>
+              <Ionicons name="volume-medium" size={11} color={language.tint} />
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
@@ -349,7 +383,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   title: {
     color: colors.text,
@@ -408,7 +442,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     color: colors.text,
-    fontSize: 14,
+    fontSize: 13,
     paddingVertical: 0,
   },
   filters: {

@@ -8,8 +8,8 @@ import { Kamu, type KamuMood } from '@/components/Kamu';
 import { KamuBubble } from '@/components/KamuBubble';
 import { Screen } from '@/components/Screen';
 import { Chip, PrimaryButton } from '@/components/ui';
-import { KAMU_LANG_COLORS } from '@/lib/kamu';
-import { LANGUAGES } from '@/lib/languages';
+import { KAMU_LANG_COLORS, KAMU_LORE } from '@/lib/kamu';
+import { LANGUAGES, type LangCode } from '@/lib/languages';
 import { useAppStore } from '@/store/useAppStore';
 import { colors, radius, spacing } from '@/theme';
 
@@ -21,53 +21,66 @@ type IntroStep = {
   mood: KamuMood;
   pointing: 'left' | 'right' | 'up' | null;
   color: string;
+  crowned?: boolean;
 };
 
 const STEPS: IntroStep[] = [
   {
-    kicker: 'Bienvenido',
-    title: 'Una foto, cinco idiomas',
-    body: 'Apunta la cámara a cualquier objeto y descubre cómo se dice en español, inglés, francés, alemán e italiano. Sin cuentas, sin claves y sin pagos.',
-    bubble: 'Hola, soy Kamu. Yo veo el mundo; tú te quedas con las palabras.',
-    mood: 'idle',
+    kicker: 'Meet Your Guide',
+    title: `${KAMU_LORE.name} · ${KAMU_LORE.species}`,
+    body: `${KAMU_LORE.origin} Point your Pixel 9 Pro XL camera at any object to refract it into 5 world languages.`,
+    bubble: 'Hey! I am Kamu. You snap the photo; my prism lens unlocks the words.',
+    mood: 'excited',
     pointing: null,
     color: KAMU_LANG_COLORS.es,
   },
   {
-    kicker: 'Cómo funciona',
-    title: 'Kamu pregunta primero',
-    body: 'Mientras analizamos tu foto, Kamu juzga el objeto con cariño. Después recibes el nombre, la pronunciación y el audio en los cinco idiomas.',
-    bubble: '¿Pero qué demonios es esto?',
-    mood: 'confused',
+    kicker: 'Streaks & Daily Crowns',
+    title: 'Catch the Word of the Day',
+    body: 'Photograph the Daily Quest object to claim a Photo Crown (+25 XP). Keep your daily photo streak alive for 1, 2, and 3 weeks to unlock Bronze, Silver, and Golden Aperture Trophies!',
+    bubble: 'Hold the mic button and pass my 75% Duolingo pronunciation check to earn +15 XP!',
+    mood: 'crowned',
     pointing: 'up',
-    color: KAMU_LANG_COLORS.fr,
+    color: KAMU_LANG_COLORS.ja,
+    crowned: true,
   },
   {
-    kicker: 'Aprende de verdad',
-    title: 'Colecciona, repasa y comparte',
-    body: 'Guarda cada hallazgo en tu biblioteca, repásalo con tarjetas y comparte una tarjeta con tus palabras. La cámara solo se activa cuando tú la usas.',
-    bubble: 'Guardar sin repasar es coleccionar polvo. Yo te aviso.',
+    kicker: 'Dynamic Polyglot Lens',
+    title: 'Pick 1 to 5 Languages',
+    body: 'Choose which languages appear simultaneously when you take a photo: Spanish, English, Japanese, Hindi, and Mandarin—each with native script, romanization, and phonetic guide.',
+    bubble: 'Tap 1, 3, or all 5 flags below—you can change them anytime from the camera!',
     mood: 'smug',
     pointing: 'right',
-    color: KAMU_LANG_COLORS.it,
+    color: KAMU_LANG_COLORS.zh,
   },
 ];
 
 export default function WelcomeScreen() {
   const completeOnboarding = useAppStore((state) => state.completeOnboarding);
-  const [index, setIndex] = useState(0);
+  const completeProfile = useAppStore((state) => state.completeProfile);
+  const learningLangs = useAppStore((state) => state.learningLangs);
+  const toggleLearningLang = useAppStore((state) => state.toggleLearningLang);
   const { height } = useWindowDimensions();
+  const [index, setIndex] = useState(0);
 
   const step = STEPS[index];
   const isLast = index === STEPS.length - 1;
-  const kamuSize = height < 700 ? Math.round(height * 0.2) : 188;
+  const kamuSize = height < 700 ? Math.round(height * 0.19) : 178;
 
   function finish() {
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     }
     completeOnboarding();
-    router.replace('/');
+    completeProfile();
+    router.replace('/(tabs)');
+  }
+
+  function handleToggleLanguage(code: LangCode) {
+    if (Platform.OS !== 'web') {
+      Haptics.selectionAsync().catch(() => undefined);
+    }
+    toggleLearningLang(code);
   }
 
   function next() {
@@ -86,7 +99,7 @@ export default function WelcomeScreen() {
       <View style={styles.top}>
         <View style={styles.brandRow}>
           <View style={styles.logo}>
-            <Ionicons name="scan" size={16} color={colors.accentInk} />
+            <Ionicons name="aperture" size={16} color={colors.accentInk} />
           </View>
           <Text style={styles.brand}>LingoLens</Text>
         </View>
@@ -94,20 +107,26 @@ export default function WelcomeScreen() {
           onPress={finish}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="Omitir introducción"
+          accessibilityLabel="Skip welcome tour"
           style={({ pressed }) => [styles.skip, { opacity: pressed ? 0.6 : 1 }]}>
-          <Text style={styles.skipText}>Omitir</Text>
+          <Text style={styles.skipText}>Open Camera</Text>
         </Pressable>
       </View>
 
       <View style={styles.stage}>
         <KamuBubble text={step.bubble} style={styles.bubble} />
-        <Kamu size={kamuSize} mood={step.mood} pointing={step.pointing} color={step.color} />
+        <Kamu
+          size={kamuSize}
+          mood={step.mood}
+          pointing={step.pointing}
+          color={step.color}
+          crowned={step.crowned}
+        />
       </View>
 
       <View style={styles.copy}>
         <Chip
-          label={`Paso ${index + 1} de ${STEPS.length}`}
+          label={`Step ${index + 1} of ${STEPS.length}`}
           color={step.color}
           background={`${step.color}1F`}
         />
@@ -117,18 +136,40 @@ export default function WelcomeScreen() {
 
         {isLast ? (
           <View style={styles.languages}>
-            {LANGUAGES.map((language) => (
-              <View key={language.code} style={styles.language}>
-                <Text style={styles.flag}>{language.flag}</Text>
-                <Text style={styles.languageName}>{language.native}</Text>
-              </View>
-            ))}
+            {LANGUAGES.map((language) => {
+              const active = learningLangs.includes(language.code);
+              return (
+                <Pressable
+                  key={language.code}
+                  onPress={() => handleToggleLanguage(language.code)}
+                  style={({ pressed }) => [
+                    styles.language,
+                    { opacity: pressed ? 0.7 : 1 },
+                    active && {
+                      borderColor: language.tint,
+                      backgroundColor: `${language.tint}22`,
+                    },
+                  ]}>
+                  <Text style={styles.flag}>{language.flag}</Text>
+                  <Text
+                    style={[
+                      styles.languageName,
+                      active && { color: language.tint, fontWeight: '800' },
+                    ]}>
+                    {language.name} ({language.native})
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         ) : null}
       </View>
 
       <View style={styles.footer}>
-        <View style={styles.dots} accessible accessibilityLabel={`Paso ${index + 1} de ${STEPS.length}`}>
+        <View
+          style={styles.dots}
+          accessible
+          accessibilityLabel={`Step ${index + 1} of ${STEPS.length}`}>
           {STEPS.map((item, dotIndex) => (
             <View
               key={item.title}
@@ -141,8 +182,8 @@ export default function WelcomeScreen() {
         </View>
 
         <PrimaryButton
-          label={isLast ? 'Empezar a explorar' : 'Siguiente'}
-          icon={isLast ? 'sparkles' : 'arrow-forward'}
+          label={isLast ? `Launch Camera (${learningLangs.length} Active)` : 'Next'}
+          icon={isLast ? 'camera' : 'arrow-forward'}
           onPress={next}
           style={styles.nextButton}
         />
@@ -150,7 +191,7 @@ export default function WelcomeScreen() {
         <View style={styles.privacy}>
           <Ionicons name="lock-closed-outline" size={12} color={colors.textDim} />
           <Text style={styles.privacyText}>
-            Gratis para siempre · sin cuenta · sin anuncios · tus datos se quedan en tu teléfono
+            Optimized for Google Pixel 9 Pro XL · Expo Go ready · 100% keyless & private
           </Text>
         </View>
       </View>
@@ -204,7 +245,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   bubble: {
-    maxWidth: 280,
+    maxWidth: 290,
     alignSelf: 'center',
   },
   copy: {
@@ -220,7 +261,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 29,
+    fontSize: 27,
     fontWeight: '800',
     letterSpacing: -0.8,
     marginTop: spacing.xs,
@@ -246,14 +287,14 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.pill,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
   },
   flag: {
-    fontSize: 12,
+    fontSize: 13,
   },
   languageName: {
     color: colors.textMuted,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
   },
   footer: {

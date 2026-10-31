@@ -21,6 +21,7 @@ const SESSION_SIZE = 10;
 export default function ReviewScreen() {
   const gradeWord = useAppStore((state) => state.gradeWord);
   const countAudio = useAppStore((state) => state.countAudio);
+  const learningLangs = useAppStore((state) => state.learningLangs);
 
   const [session, setSession] = useState<DueWord[]>(() => {
     const state = useAppStore.getState();
@@ -39,7 +40,7 @@ export default function ReviewScreen() {
     const state = useAppStore.getState();
     const next = buildSession(state.learned, state.reviews, SESSION_SIZE);
     if (next.length === 0) {
-      router.replace('/library');
+      router.replace('/(tabs)/library');
       return;
     }
     setSession(next);
@@ -91,21 +92,26 @@ export default function ReviewScreen() {
     return (
       <Screen>
         <View style={styles.header}>
-          <IconButton icon="close" size={38} onPress={() => router.back()} accessibilityLabel="Cerrar repaso" />
-          <Text style={styles.headerTitle}>Repaso</Text>
+          <IconButton
+            icon="close"
+            size={38}
+            onPress={() => router.back()}
+            accessibilityLabel="Close review"
+          />
+          <Text style={styles.headerTitle}>Spaced Repetition Review</Text>
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.empty}>
           <Kamu size={150} mood="sleepy" color={colors.violet} />
-          <Text style={styles.emptyTitle}>No hay nada que repasar</Text>
+          <Text style={styles.emptyTitle}>Nothing due right now</Text>
           <Text style={styles.emptyText}>{pickLine(KAMU_EMPTY_LINES, 0)}</Text>
           <PrimaryButton
-            label="Ir a escanear"
+            label="Open Camera"
             icon="camera"
-            onPress={() => router.replace('/')}
+            onPress={() => router.replace('/(tabs)')}
             style={styles.emptyButton}
           />
-          <GhostButton label="Volver" onPress={() => router.back()} style={styles.emptyGhost} />
+          <GhostButton label="Back" onPress={() => router.back()} style={styles.emptyGhost} />
         </View>
       </Screen>
     );
@@ -116,22 +122,28 @@ export default function ReviewScreen() {
     return (
       <Screen>
         <View style={styles.header}>
-          <IconButton icon="close" size={38} onPress={() => router.back()} accessibilityLabel="Cerrar repaso" />
-          <Text style={styles.headerTitle}>Repaso</Text>
+          <IconButton
+            icon="close"
+            size={38}
+            onPress={() => router.back()}
+            accessibilityLabel="Close review"
+          />
+          <Text style={styles.headerTitle}>Session Complete</Text>
           <View style={styles.headerSpacer} />
         </View>
         <ScrollView contentContainerStyle={styles.doneContent} showsVerticalScrollIndicator={false}>
-          <Kamu size={168} mood="happy" color={colors.accent} />
-          <Text style={styles.doneTitle}>Sesión completada</Text>
+          <Kamu size={168} mood="excited" crowned color={colors.accent} />
+          <Text style={styles.doneTitle}>Review Session Complete!</Text>
           <Text style={styles.doneText}>
-            Repasaste {graded} {graded === 1 ? 'palabra' : 'palabras'}. Kamu está casi impresionado.
+            You reviewed {graded} {graded === 1 ? 'card' : 'cards'}. Kamu’s prism lens is glowing
+            with pride.
           </Text>
 
           <View style={styles.doneStats}>
             <View style={styles.doneStat}>
               <Ionicons name="layers" size={16} color={colors.violet} />
               <Text style={styles.doneValue}>{graded}</Text>
-              <Text style={styles.doneLabel}>Tarjetas</Text>
+              <Text style={styles.doneLabel}>Cards</Text>
             </View>
             <View style={styles.doneStat}>
               <Ionicons name="flash" size={16} color={colors.accent} />
@@ -141,20 +153,20 @@ export default function ReviewScreen() {
             <View style={styles.doneStat}>
               <Ionicons name="checkmark-circle" size={16} color={colors.amber} />
               <Text style={styles.doneValue}>{accuracy}%</Text>
-              <Text style={styles.doneLabel}>Completado</Text>
+              <Text style={styles.doneLabel}>Accuracy</Text>
             </View>
           </View>
 
           <PrimaryButton
-            label="Repasar otra vez"
+            label="Review Another Batch"
             icon="refresh"
             onPress={restart}
             style={styles.doneButton}
           />
           <GhostButton
-            label="Volver a la biblioteca"
+            label="Return to Library"
             icon="albums-outline"
-            onPress={() => router.replace('/library')}
+            onPress={() => router.replace('/(tabs)/library')}
             style={styles.doneGhost}
           />
         </ScrollView>
@@ -163,14 +175,30 @@ export default function ReviewScreen() {
   }
 
   const progress = session.length === 0 ? 0 : (index / session.length) * 100;
-  const available = LANGUAGES.filter((language) => Boolean(current?.word.words[language.code]));
+  const activeFiltered = LANGUAGES.filter(
+    (language) =>
+      learningLangs.includes(language.code) && Boolean(current?.word.words[language.code]),
+  );
+  const available =
+    activeFiltered.length > 0
+      ? activeFiltered
+      : LANGUAGES.filter((language) => Boolean(current?.word.words[language.code]));
 
   return (
     <Screen>
       <View style={styles.header}>
-        <IconButton icon="close" size={38} onPress={() => router.back()} accessibilityLabel="Cerrar repaso" />
-        <Text style={styles.headerTitle}>Repaso</Text>
-        <Chip label={`${index + 1}/${session.length}`} color={colors.violet} background={colors.violetSoft} />
+        <IconButton
+          icon="close"
+          size={38}
+          onPress={() => router.back()}
+          accessibilityLabel="Close review"
+        />
+        <Text style={styles.headerTitle}>Flashcard Review</Text>
+        <Chip
+          label={`${index + 1}/${session.length}`}
+          color={colors.violet}
+          background={colors.violetSoft}
+        />
       </View>
 
       <View style={styles.progressTrack}>
@@ -181,7 +209,11 @@ export default function ReviewScreen() {
         <View style={styles.kamuRow}>
           <Kamu size={74} mood={revealed ? 'happy' : 'confused'} color={colors.violet} />
           <KamuBubble
-            text={revealed ? 'Eso es. No era tan difícil.' : pickLine(KAMU_REVIEW_LINES, index)}
+            text={
+              revealed
+                ? 'Spot on! Tap any row to hear native articulation.'
+                : pickLine(KAMU_REVIEW_LINES, index)
+            }
             style={styles.bubble}
           />
         </View>
@@ -191,25 +223,34 @@ export default function ReviewScreen() {
           <Text style={styles.emoji}>{current.word.emoji}</Text>
           <Text style={styles.object}>{current.word.object}</Text>
           <Text style={styles.prompt}>
-            {revealed ? 'Así se dice en tus cinco idiomas' : '¿Cómo se dice en los cinco idiomas?'}
+            {revealed
+              ? `Active translations (${available.length})`
+              : `Recall this word in your ${available.length} active ${
+                  available.length === 1 ? 'language' : 'languages'
+                }`}
           </Text>
 
           {revealed ? (
             <View style={styles.translations}>
               {available.map((language) => {
-                const value = current.word.words[language.code];
+                const value = current.word.words[language.code] ?? '';
+                const roma = current.word.romanizations?.[language.code] ?? '';
+                const showRoma = Boolean(roma) && roma.toLowerCase() !== value.toLowerCase();
                 return (
                   <Pressable
                     key={language.code}
                     onPress={() => handleSpeak(value, language.code)}
                     accessibilityRole="button"
-                    accessibilityLabel={`Escuchar ${value} en ${language.name}`}
+                    accessibilityLabel={`Listen to ${value} in ${language.name}`}
                     style={({ pressed }) => [styles.translation, { opacity: pressed ? 0.7 : 1 }]}>
                     <Text style={styles.flag}>{language.flag}</Text>
                     <Text style={styles.language}>{language.name}</Text>
-                    <Text style={[styles.value, { color: language.tint }]} numberOfLines={1}>
-                      {value}
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.value, { color: language.tint }]} numberOfLines={1}>
+                        {value}
+                      </Text>
+                      {showRoma ? <Text style={styles.romaText}>{roma}</Text> : null}
+                    </View>
                     <Ionicons name="volume-medium" size={15} color={language.tint} />
                   </Pressable>
                 );
@@ -221,21 +262,21 @@ export default function ReviewScreen() {
         {revealed ? (
           <View style={styles.grades}>
             <GradeButton
-              label="Otra vez"
+              label="Again"
               hint="+1 XP"
               icon="refresh"
               tint={colors.danger}
               onPress={() => handleGrade('again')}
             />
             <GradeButton
-              label="Bien"
+              label="Good"
               hint="+4 XP"
               icon="checkmark"
               tint={colors.accent}
               onPress={() => handleGrade('good')}
             />
             <GradeButton
-              label="Fácil"
+              label="Easy"
               hint="+6 XP"
               icon="flash"
               tint={colors.violet}
@@ -244,7 +285,7 @@ export default function ReviewScreen() {
           </View>
         ) : (
           <PrimaryButton
-            label="Mostrar respuesta"
+            label="Reveal Translations"
             icon="eye-outline"
             onPress={handleReveal}
             style={styles.revealButton}
@@ -252,7 +293,8 @@ export default function ReviewScreen() {
         )}
 
         <Text style={styles.hint}>
-          La repetición espaciada decide cuándo vuelve cada palabra. Sin castigos y sin perder la racha.
+          Spaced repetition schedules each word based on how effortlessly you recall its script and
+          sound.
         </Text>
       </ScrollView>
     </Screen>
@@ -378,12 +420,16 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.4,
-    width: 66,
+    width: 72,
   },
   value: {
-    flex: 1,
     fontSize: 17,
     fontWeight: '700',
+  },
+  romaText: {
+    color: colors.textDim,
+    fontSize: 11,
+    marginTop: 1,
   },
   grades: {
     flexDirection: 'row',

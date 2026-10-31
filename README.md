@@ -1,209 +1,109 @@
-# LingoLens
+# LingoLens v2.0.0 · Google Pixel 9 Pro XL Edition
 
-**One photo, five languages.** Point the camera at any object: LingoLens identifies it and shows its name in Spanish, English, French, German and Italian, with written pronunciation and audio. Save it, review it with spaced repetition, share a card and learn with Kamu, the mascot.
+**Snap any object with your camera and master its name across five world languages simultaneously: Spanish, English, Japanese, Hindi, and Mandarin.**
 
-Mobile app built with **Expo SDK 58 + React Native 0.88 + TypeScript**.
-
-**100% free — no accounts, no logins, no API keys.**
-
-**Version:** 1.1.0 · **Repository:** [github.com/Goanarchy/LingoLens](https://github.com/Goanarchy/LingoLens) · **Changelog:** [RELEASE_NOTES.md](./RELEASE_NOTES.md)
+Built with **Expo SDK 58 + React Native 0.88.1 + TypeScript**, LingoLens v2.0.0 is engineered to run at 100% fluidity inside **Expo Go** on the **Google Pixel 9 Pro XL**—with zero API keys, zero accounts, and full offline resilience.
 
 ---
 
-## What already works
+## Key Features (v2.0.0 Upgrade)
 
-- 🎬 **First-run intro**: three short steps that explain the flow and preview the mascot before the camera permission is requested.
-- 🦎 **Kamu, the original mascot**: a one-eyed chameleon drawn in SVG, with five moods, language-based colors and reduced-motion support. It appears while the photo is analyzed with a *“What the heck is this?”* face, pointing at the object.
-- 📷 **Live camera** (expo-camera) with **gallery** as a fallback.
-- 🧠 **Free, keyless vision AI**: open models from OVHcloud AI Endpoints (Qwen2.5-VL 72B and fallbacks), with automatic model rotation.
-- 🛟 **Never blocked**: if the free AI fails or is rate-limited, the app falls back to a local catalog of 18 objects and tells you clearly.
-- 🗣️ **Real audio** in all 5 languages using the device voice (expo-speech), at no cost.
-- 🔤 **Written pronunciation** under every word (e.g. `/man-SAH-nah/`) plus article and example sentence.
-- 📚 **Library** with search across the five languages, category filters, favorites and per-word audio.
-- 🧠 **Spaced-repetition review**: up to 10 flashcards per session, three grades (Again / Good / Easy) and an SM-2-lite scheduler.
-- 🖼️ **Shareable word card**: a branded PNG generated on the device and sent to the system share sheet.
-- ☀️ **Word of the day** with one-tap audio and haptics.
-- ⭐ **XP, 7 global ranks** (Curious → Legend) and an **independent rank per language** (Beginner → Master).
-- 🏅 **12 badges** that unlock based on your real progress.
-- 🔥 **Daily streak** and statistics (words, languages, audios, streak).
-- 🌍 **Social feed** with posts, likes and your own discoveries.
-- 💾 **Local persistence** (AsyncStorage): your progress survives app restarts.
-- 📱 **Optimized for large photos**: downscales to 1024 px before upload (key on the Pixel 9 Pro XL, which shoots 50 MP photos).
-- ♿ **Accessibility**: screen-reader labels, system font scaling and reduced-motion support.
+### 1. Immediate Camera Launch & Pixel 9 Pro XL Optimization
+- **Instant Viewfinder**: Launching LingoLens opens directly onto the live camera viewfinder (`src/app/(tabs)/index.tsx`) and automatically requests camera access so you can snap a photo immediately.
+- **50 MP Sensor Downscaler**: High-resolution captures from the Google Pixel 9 Pro XL camera are downscaled on-device to `1024px` (`0.72` JPEG quality) via `expo-image-manipulator` (`src/lib/image.ts`), ensuring fast, crash-free cloud inference and memory safety inside Expo Go.
+- **Word of the Day Quest Banner**: Displays today's target object right above the viewfinder, with native audio preview and one-tap quest testing.
 
----
+### 2. Dynamic 5-Language Engine (1 to 5 Simultaneous Cards)
+- **Supported Languages**:
+  - 🇪🇸 **Spanish** (`es-ES` · Latin script)
+  - 🇬🇧 **English** (`en-US` · Latin script)
+  - 🇯🇵 **Japanese** (`ja-JP` · Kanji & Kana + **Hepburn Rōmaji**)
+  - 🇮🇳 **Hindi** (`hi-IN` · Devanagari script + **ISO Transliteration**)
+  - 🇨🇳 **Mandarin** (`zh-CN` · Simplified Hanzi + **Hanyu Pinyin with tone marks**)
+- **Dynamic Filtering**: Toggle between **1 and 5 active languages** directly from the Camera bar, Result screen, Profile, or Settings. Selecting 1 language displays 1 card; selecting 3 displays 3 simultaneously; selecting 5 displays all 5.
+- **Tri-Layer Lexicon**: Every card renders the **native script**, **Latin romanization** (for non-Latin scripts), **phonetic pronunciation guide** (`/mahn-SAH-nah/`), example sentence + English meaning, normal TTS playback (`0.85x`), and Duolingo-style slow turtle playback (`🐢 0.52x`).
 
-## Try it on your Google Pixel 9 Pro XL
+### 3. Duolingo-Style Pronunciation Module
+- **Pedagogical Voice Validation**: Expand the pronunciation coach under any language card (`src/components/WordCard.tsx`, `src/lib/pronunciation-engine.ts`).
+- **Strict Scoring & 3-Attempt Rule**: Uses normalized Levenshtein similarity across native script, romanization, and phonetic syllables with a **`>= 75%` passing threshold**.
+- **XP Gated by Accuracy**: Pronunciation points (`+15 XP`) and Gold Crown upgrades are awarded **only** when pronunciation passes validation. Includes syllable-by-syllable color feedback and a *"Can't speak now"* skip option.
 
-### 1. Requirements
+### 4. Photo Crowns, 1/2/3-Week Streaks & Merit Social Network
+- **Daily Photo Crowns**: Photographing an object related to the **Word of the Day** awards a **Bronze Crown** (`+25 XP`), upgrading to **Silver** when saved to the Library and **Gold** when passing the pronunciation check.
+- **1-Week, 2-Week & 3-Week Consistency Trophies**:
+  - **Week 1 (7 consecutive days)**: `🥉 Bronze Lens Crown` (`+100 XP`)
+  - **Week 2 (14 consecutive days)**: `🥈 Silver Prism Trophy` (`+250 XP`)
+  - **Week 3 (21 consecutive days)**: `👑 Golden Aperture Crown · Three-Week Dynasty` (`+500 XP`)
+- **Merit Hub (`src/app/(tabs)/feed.tsx`)**: Social leaderboard and community feed celebrating photo streaks, Word of the Day crowns, polyglot ranks, and interactive reactions (`🔥`, `💡`, `👑`).
 
-On the PC:
-
-- **Node 18 or newer** (tested with Node 24).
-- Phone and PC on the **same Wi-Fi network**.
-
-On the phone:
-
-- Install **Expo Go** from Google Play:
-  `https://play.google.com/store/apps/details?id=host.exp.exponent`
-
-### 2. Start the project
-
-```powershell
-npm install
-npm start
-```
-
-A **QR code** appears in the terminal.
-
-### 3. Connect
-
-1. Open **Expo Go** on the Pixel.
-2. Tap **"Scan QR code"** (or the scan icon).
-3. Point it at the QR code in the terminal.
-4. Wait for the first compile (30–90 s).
-
-> If the QR code does not appear, or the terminal is in compact mode, press `s` in the Expo terminal.
-
-### 4. First run
-
-1. Complete the **3-step intro** (or tap **Skip**). The camera permission is only requested when you take a photo.
-2. Point at an object with good light and press the white shutter button.
-3. Kamu appears while the photo is analyzed, then the app shows the 5 cards.
-4. Tap the **speaker** on any language to hear the pronunciation.
-5. Press **Save word** to earn XP, then **Share card** to export a PNG or **Share to feed**.
-6. Open **Library** to search, filter and favorite your words, and **Review** to practice with spaced repetition.
-
-### 5. Audio in the 5 languages (important on Android)
-
-Audio uses the **Google Text-to-Speech** engine. Most Pixel phones ship Spanish and English voices, but French, German and Italian may be missing:
-
-1. Open **Settings** in LingoLens → **Device voices**.
-2. Tap **Test** on each language. If nothing plays, press **Open system voice settings**.
-3. On Android: **System → Languages → Text-to-speech output → Google engine → Install voice data**.
-4. Download **French, German and Italian**.
-5. Return to the app and test again (no restart needed).
-
-### 6. If the QR code does not connect
-
-| Symptom | Fix |
-|---|---|
-| Expo Go says "Could not connect" | Same Wi-Fi, no VPN, no guest network. |
-| The PC has a firewall | Allow Node.js on the Windows private network. |
-| Wi-Fi with client isolation | Use `npx expo start --tunnel` (slower, but works on any network). |
-| The terminal shows a different port | Use the updated QR code; do not type the URL by hand. |
-| "Project is incompatible with this version of Expo Go" | Update Expo Go from the Play Store. |
-
-### 7. If something fails inside the app
-
-| Problem | Cause and fix |
-|---|---|
-| "We could not identify the photo" | No internet or the AI is saturated. Tap **Use demo** or enable **Offline mode** in Settings. |
-| The AI takes 10–30 s | Normal: the free tier allows 2 requests/minute per IP. If saturated, it rotates models or falls back to the local catalog. |
-| No audio | The language voice pack is missing (step 5) or media volume is low. |
-| The camera is black | Close other apps using the camera; check the permission in Android Settings → Apps → Expo Go → Permissions. |
-| The app crashes when taking a photo | Photos are downscaled before upload to avoid this. If it still happens, pick the photo from the **gallery**. |
-| The feed does not update across phones | It is local by design: no server, no accounts. |
-
-> **Android 15/16 (Pixel 9 Pro XL):** the app uses Expo Go and standard APIs, so no special storage permissions are required. The photo picker uses the system picker, which needs no extra permission.
+### 5. Kamu — The Prism Chameleon Mascot
+- **Origin & Lore (`src/lib/kamu.ts`)**: Hatched inside a vintage telephoto lens in a Kyoto camera shop, Kamu shifts chromatic scales to match the language you are practicing.
+- **Enhanced SVG & Moods (`src/components/Kamu.tsx`)**: Features 8 expressive moods (`idle`, `happy`, `excited`, `crowned`, `confused`, `sleepy`, `smug`, `wink`), an optical aperture ring in his eye, and a golden crown on his crest.
+- **Photo-Specific Witty Quips**: Every analyzed photo includes a funny, object-specific remark (`result.kamuQuip`) tailored to what you just photographed, plus interactive guide banners (`KamuGuideBanner`) across all tabs.
 
 ---
 
-## How the free AI works (no key)
+## Project Structure
 
-```
-Photo → downscale to 1024 px JPEG → OVHcloud AI Endpoints (anonymous, no key)
-      → Qwen2.5-VL 72B → if error/429/timeout → Qwen3.8-27B → Qwen3.5-9B → Qwen3.6-27B
-      → if all fail → local catalog of 18 objects (announced demo mode)
-```
-
-- **Provider:** `https://oai.endpoints.kepler.ai.cloud.ovh.net/v1` (OVHcloud AI Endpoints).
-- **Anonymous tier:** no signup, no key, **2 requests/minute per IP and model**.
-- **Vision models** used in a cascade, with a total budget of ~55 s.
-- **Privacy:** the photo is sent to the provider only for identification; there is no backend of our own and nothing is stored on our servers. If you do not want to send photos, enable **Offline mode**.
-- **No cost:** no card, no subscription, no embedded keys.
-
-> ⚠️ This is a free, best-effort service: it may change, throttle or go down without notice. That is why the local fallback exists and the app always responds.
-
----
-
-## Project structure
-
-```
+```text
 src/
-  app/                      # Routes (Expo Router)
-    _layout.tsx             # Root stack + SafeArea
-    welcome.tsx             # 3-step first-run intro with Kamu
-    (tabs)/
-      _layout.tsx           # Tabs: Scan / Library / Community / Profile
-      index.tsx             # Camera, gallery, daily word and photo compression
-      library.tsx           # Search, filters, favorites and share cards
-      feed.tsx              # Local social feed
-      profile.tsx           # Rank, stats, languages, badges
-    result.tsx              # Identification + 5 cards + Kamu + share card
-    review.tsx              # Spaced-repetition flashcards
-    settings.tsx            # Name, free AI, voice diagnostics, reset
-  components/               # Reusable UI (Screen, WordCard, Kamu, ShareCard…)
-  data/seed.ts              # Sample posts
-  lib/
-    vision.ts               # Keyless free AI + cascade + demo fallback
-    image.ts                # Downscale/compress before upload
-    demoCatalog.ts          # 18 objects with translations and phonetics
-    languages.ts            # The 5 languages and their TTS voices
-    gamification.ts         # Ranks, per-language ranks, badges, XP
-    kamu.ts                 # Mascot colors and lines
-    srs.ts                  # SM-2-lite spaced-repetition scheduler
-    tts.ts                  # System voices + diagnostics
-    types.ts
-  store/useAppStore.ts      # Global state (zustand + persist)
-  theme.ts                  # Colors, radii, spacing
-```
-
-### How progress is calculated
-
-- Saving a new word: **+12 XP + 2 XP per language** (22 XP with 5 languages).
-- Reviewing a card: **+1 XP** (Again), **+4 XP** (Good) or **+6 XP** (Easy).
-- First post: **+15 XP**; subsequent posts: **+6 XP**.
-- Streak: increases when you save or review a word on consecutive days.
-- Badges: evaluated after every action (words, languages, audios, posts, streak, XP).
-
-| Rank | XP |
-|---|---|
-| 🌱 Curious | 0 |
-| 🧭 Explorer | 120 |
-| ✈️ Traveler | 350 |
-| 📚 Linguist | 700 |
-| 🌍 Polyglot | 1200 |
-| 🏛️ Ambassador | 2000 |
-| 👑 Legend | 3200 |
-
-Per-language ranks: 🐣 Beginner (0) · 💬 Chatterbox (5) · 🗣️ Conversationalist (15) · 🌊 Fluent (30) · 🎓 Master (60).
-
----
-
-## Useful commands
-
-```bash
-npm start                              # dev server + QR code
-npx expo start --tunnel                # if Wi-Fi blocks the connection
-npm run web                            # web build (camera needs localhost/HTTPS)
-npx tsc --noEmit                       # typecheck
-npx expo-doctor                        # project diagnostics
-npx expo export --platform android     # validate the bundle
+├── app/
+│   ├── _layout.tsx           # Root Stack navigation & dark status bar
+│   ├── (tabs)/
+│   │   ├── _layout.tsx       # Bottom tabs (Camera, Library, Merit Hub, Profile)
+│   │   ├── index.tsx         # Immediate Camera screen + Word of the Day + Language bar
+│   │   ├── library.tsx       # Saved vocabulary search across 5 scripts + SRS entrypoint
+│   │   ├── feed.tsx          # Merit Hub: Streak Podium + Crown Catches feed
+│   │   └── profile.tsx       # 1/2/3-Week Streak Trophies, Crowns Vault, Badges & Ranks
+│   ├── result.tsx            # Vision AI result, Kamu photo quip, Crown banner & WordCards
+│   ├── review.tsx            # SM-2-lite Spaced Repetition flashcards
+│   ├── settings.tsx          # Dynamic languages, Vision AI toggle & TTS voice diagnostics
+│   └── welcome.tsx           # Interactive 3-step Kamu tour
+├── components/
+│   ├── Kamu.tsx              # Animated SVG mascot with 8 moods & golden crown
+│   ├── KamuBubble.tsx        # Speech bubble + interactive KamuGuideBanner + Lore modal
+│   ├── WordCard.tsx          # 5-language card + slow turtle audio + Duolingo voice coach
+│   ├── PostCard.tsx          # Merit Hub post card with streak/crown badges & reactions
+│   ├── ShareCard.tsx         # Collectible 1080x1350 PNG card exporter
+│   ├── BadgeTile.tsx         # Achievement badge tile
+│   ├── XPBar.tsx             # Animated progress bar
+│   ├── Screen.tsx            # Edge-to-edge SafeArea wrapper
+│   └── ui.tsx                # Design system primitives
+├── lib/
+│   ├── languages.ts          # 5 mandatory languages (es, en, ja, hi, zh) & script metadata
+│   ├── demoCatalog.ts        # 24-object polyglot catalog + daily word matcher + Kamu quips
+│   ├── vision.ts             # Keyless Qwen2.5-VL cloud cascade + local catalog fallback
+│   ├── pronunciation-engine.ts # Duolingo-style syllable & Levenshtein pronunciation scorer
+│   ├── speech-recognition.ts # Hardware ASR wrapper + Expo Go safe fallback
+│   ├── gamification.ts       # Ranks, 1/2/3-week streak milestones, and 16 badges
+│   ├── kamu.ts               # Kamu lore, screen tips, and object-specific photo quips
+│   ├── image.ts              # Pixel 9 Pro XL 50MP downscaler (1024px JPEG)
+│   ├── tts.ts                # Native TTS wrapper (normal 0.85x & slow 0.52x speeds)
+│   ├── srs.ts                # Spaced repetition scheduler
+│   └── types.ts              # Shared TypeScript interfaces
+├── data/
+│   └── seed.ts               # Merit leaderboard rivals & initial community discoveries
+├── store/
+│   └── useAppStore.ts        # Persisted Zustand store (lingolens-v2)
+└── theme/
+    └── index.ts              # Dark-mode palette, spacing, and typography tokens
 ```
 
 ---
 
-## Current limitations
+## Running on Google Pixel 9 Pro XL with Expo Go
 
-- The feed and profiles are **local**: no accounts and no shared server.
-- The free AI service allows 2 requests/minute per IP and may be saturated.
-- TTS depends on the voices installed on the phone.
-- Review scheduling is stored locally; it does not sync between devices.
-- The icon is still the Expo placeholder.
-
-**Turning it into a real product:** Supabase backend (auth + posts + storage), a proxy for the AI with rate limiting, feed moderation, server-side XP validation and `eas build`/`eas submit`. No Android Studio or Xcode required.
-
----
-
-Built with Expo SDK 58. All code lives in `src/`; the project has no generated native folders.
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Start the Metro bundler:
+   ```bash
+   npx expo start --tunnel
+   ```
+3. Open **Expo Go** on your **Google Pixel 9 Pro XL** and scan the QR code.
+4. Type-check and lint:
+   ```bash
+   npx tsc --noEmit
+   npx expo lint
+   ```

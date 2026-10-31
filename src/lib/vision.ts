@@ -1,15 +1,22 @@
-import { demoResult } from './demoCatalog';
-import { DEFAULT_LANGS, LANGUAGES, isLangCode, type LangCode } from './languages';
-import type { PendingScan, ScanResult, Translation } from './types';
+import {
+  catalogTranslations,
+  demoResult,
+  evaluateDailyMatch,
+  findCatalogEntry,
+  getDailyWord,
+} from './demoCatalog';
+import { ALL_LANGS, LANGUAGES, isLangCode, type LangCode } from './languages';
+import { getPhotoQuip } from './kamu';
+import { CATEGORIES, type Category, type PendingScan, type ScanResult, type Translation } from './types';
 
 /**
- * Motor de visión gratuito y SIN clave de API.
+ * Keyless Vision & On-Device Hybrid AI Engine (Pixel 9 Pro XL + Expo Go ready).
  *
- * OVHcloud AI Endpoints ofrece un nivel anónimo (sin registro y sin clave) de
- * 2 peticiones por minuto e IP y modelo. Usamos varios modelos de visión en
- * cascada: si uno falla, está saturado o tarda demasiado, probamos el
- * siguiente. Si ninguno responde, la app cae en el catálogo local para que
- * nunca se quede bloqueada.
+ * Uses OVHcloud AI Endpoints' anonymous tier (Qwen2.5-VL-72B-Instruct and
+ * fallback vision models) with automatic model rotation. Each photo is downscaled
+ * to 1024px JPEG beforehand to respect the Pixel 9 Pro XL 50 MP sensor memory budget.
+ * If the free cloud endpoint is rate-limited or offline, the engine falls back
+ * transparently to the local 5-language catalog so the user is never blocked.
  */
 const ENDPOINT = 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions';
 
@@ -20,15 +27,16 @@ const VISION_MODELS = [
   'Qwen3.6-27B',
 ] as const;
 
-const REQUEST_TIMEOUT_MS = 30_000;
-/** Tiempo máximo total antes de caer al catálogo local. */
-const OVERALL_BUDGET_MS = 55_000;
+const REQUEST_TIMEOUT_MS = 28_000;
+const OVERALL_BUDGET_MS = 50_000;
 
-type IdentifyOptions = {
+export type IdentifyOptions = {
   langs?: LangCode[];
   signal?: AbortSignal;
-  /** Fuerza el catálogo local sin llamar a la red. */
+  /** Forces the local catalog without calling the network. */
   demo?: boolean;
+  /** Optional catalog object id/name to simulate during demo or testing. */
+  preferredObject?: string;
 };
 
 export class VisionError extends Error {
@@ -47,26 +55,29 @@ function abortError(): Error {
   return error;
 }
 
-function buildPrompt(langs: LangCode[]): string {
-  const names = langs
-    .map((code) => `${code} (${LANGUAGES.find((language) => language.code === code)?.name})`)
-    .join(', ');
+function buildPrompt(dailyWord: string): string {
+  const langList = LANGUAGES.map(
+    (lang) => `${lang.code} (${lang.name} — native script: ${lang.native})`,
+  ).join(', ');
 
   return [
-    'Eres un experto en lexicografía visual que ayuda a aprender idiomas.',
-    'Analiza la imagen y realiza estas tareas:',
-    '1. Identifica el objeto principal, el más prominente y reconocible.',
-    '2. Devuelve su nombre en español en "object", un emoji en "emoji" y una categoría corta en "category" (Comida, Animal, Mueble, Ropa, Tecnología, Transporte, Naturaleza u Objeto).',
-    `3. Traduce ese objeto a estos idiomas: ${names}. Para cada idioma devuelve:`,
-    '   - code: el código del idioma.',
-    '   - word: el sustantivo en singular, sin artículo.',
-    '   - article: el artículo determinado (el/la, the, le/la, der/die/das, il/lo/la/l’).',
-    '   - phonetic: pronunciación figurada para un hispanohablante, con la sílaba tónica en MAYÚSCULAS (ejemplo: "man-SÁ-na").',
-    '   - example: una frase corta y natural en ese idioma que use la palabra.',
-    '4. Devuelve "confidence" con un número entre 0 y 1.',
-    'Si no hay un objeto claro, elige el más reconocible y baja la confianza.',
-    'Responde SOLO con un objeto JSON válido, sin markdown ni texto adicional, con esta forma:',
-    '{"object":"...","emoji":"...","category":"...","confidence":0.9,"translations":[{"code":"es","word":"...","article":"...","phonetic":"...","example":"..."},{"code":"en","word":"...","article":"...","phonetic":"...","example":"..."},{"code":"fr","word":"...","article":"...","phonetic":"...","example":"..."},{"code":"de","word":"...","article":"...","phonetic":"...","example":"..."},{"code":"it","word":"...","article":"...","phonetic":"...","example":"..."}]}',
+    'You are a visual lexicographer and witty language coach inside the LingoLens mobile app.',
+    `Today's Word of the Day is "${dailyWord}".`,
+    'Analyze the user photo and perform these tasks:',
+    '1. Identify the single most prominent object. Return its lowercase singular English noun in "object", a matching "emoji", and a "category" from: Food, Drink, Animal, Furniture, Clothing, Tech, Transport, Nature, Object.',
+    `2. Translate that object into ALL 5 languages: ${langList}. For each language return:`,
+    '   - "code": one of "es", "en", "ja", "hi", "zh".',
+    '   - "word": the noun in its NATIVE script (Spanish/English Latin, Japanese Kanji/Kana, Hindi Devanagari, Mandarin Simplified Chinese), singular, without article.',
+    '   - "romanization": Latin transliteration (Hepburn romaji with macrons for Japanese, ISO-lite transliteration for Hindi, Hanyu Pinyin with tone marks for Mandarin; repeat the word for es/en).',
+    '   - "phonetic": easy English-reader phonetic respelling with hyphenated syllables and stressed syllable in CAPS (e.g. "mahn-SAH-nah", "reen-goh", "SAYB", "ping-gwoh").',
+    '   - "article": Spanish definite article (el/la), English (a/an), or Mandarin measure word (个, 只, 本, 把, 张, 杯, 辆, 台). Omit for ja/hi.',
+    '   - "example": a short natural sentence in the target language (native script) using the word.',
+    '   - "exampleMeaning": the English translation of that example sentence.',
+    `3. Check if the photographed object is "${dailyWord}" or directly related to "${dailyWord}". Return "dailyMatched" (boolean) and "dailyReason" (one short English sentence).`,
+    '4. Return "kamuQuip": one funny, affectionate, slightly sarcastic sentence (max 95 chars) spoken by Kamu, our one-eyed chameleon mascot, commenting specifically on THIS photo.',
+    '5. Return "confidence" between 0 and 1.',
+    'Respond ONLY with a valid JSON object, no markdown fences, matching this schema:',
+    '{"object":"apple","emoji":"🍎","category":"Food","confidence":0.95,"dailyMatched":true,"dailyReason":"You captured an apple!","kamuQuip":"Crisp, round, and posing better than most influencers.","translations":[{"code":"es","word":"manzana","romanization":"manzana","phonetic":"mahn-SAH-nah","article":"la","example":"...","exampleMeaning":"..."},{"code":"en","word":"apple","romanization":"apple","phonetic":"AP-uhl","article":"an","example":"...","exampleMeaning":"..."},{"code":"ja","word":"りんご","romanization":"ringo","phonetic":"reen-goh","example":"...","exampleMeaning":"..."},{"code":"hi","word":"सेब","romanization":"seb","phonetic":"SAYB","example":"...","exampleMeaning":"..."},{"code":"zh","word":"苹果","romanization":"píngguǒ","phonetic":"ping-gwoh","article":"个","example":"...","exampleMeaning":"..."}]}',
   ].join('\n');
 }
 
@@ -79,7 +90,7 @@ function extractJson(text: string): unknown {
   const start = cleaned.indexOf('{');
   const end = cleaned.lastIndexOf('}');
   if (start === -1 || end === -1 || end <= start) {
-    throw new VisionError('La IA devolvió una respuesta ilegible.');
+    throw new VisionError('The vision AI returned an unreadable response.');
   }
 
   cleaned = cleaned.slice(start, end + 1);
@@ -87,59 +98,128 @@ function extractJson(text: string): unknown {
   try {
     return JSON.parse(cleaned);
   } catch {
-    throw new VisionError('La IA devolvió un JSON incompleto.');
+    throw new VisionError('The vision AI returned incomplete JSON.');
   }
 }
 
-function normalize(raw: unknown, langs: LangCode[]): ScanResult {
-  const data = raw as Partial<ScanResult> | null;
+function coerceCategory(raw: unknown): Category {
+  if (typeof raw === 'string') {
+    const match = CATEGORIES.find((c) => c.toLowerCase() === raw.trim().toLowerCase());
+    if (match) return match;
+  }
+  return 'Object';
+}
+
+function normalize(raw: unknown, langs: readonly LangCode[]): ScanResult {
+  const data = raw as (Partial<ScanResult> & {
+    dailyMatched?: boolean;
+    dailyReason?: string;
+    kamuQuip?: string;
+  }) | null;
+
   if (!data || typeof data.object !== 'string' || !Array.isArray(data.translations)) {
-    throw new VisionError('La IA devolvió una respuesta inesperada.');
+    throw new VisionError('The vision AI returned an unexpected payload.');
   }
 
-  const translations: Translation[] = [];
+  const objectName = data.object.trim().toLowerCase();
+  const catalogMatch = findCatalogEntry(objectName);
+  const byCode = new Map<LangCode, Translation>();
+
+  if (catalogMatch) {
+    for (const item of catalogMatch.translations) {
+      byCode.set(item.code, { ...item });
+    }
+  }
+
   for (const item of data.translations) {
     if (!item || typeof item.word !== 'string' || !isLangCode(String(item.code))) continue;
     const word = item.word.trim();
     if (!word) continue;
-    translations.push({
+    const fallback = byCode.get(item.code);
+    byCode.set(item.code, {
       code: item.code,
       word,
-      phonetic: (item.phonetic ?? '').toString().trim() || word,
-      article: item.article?.toString().trim(),
-      example: item.example?.toString().trim(),
+      romanization:
+        typeof item.romanization === 'string' && item.romanization.trim()
+          ? item.romanization.trim()
+          : fallback?.romanization ?? word,
+      phonetic:
+        typeof item.phonetic === 'string' && item.phonetic.trim()
+          ? item.phonetic.trim()
+          : fallback?.phonetic ?? word,
+      article:
+        typeof item.article === 'string' && item.article.trim()
+          ? item.article.trim()
+          : fallback?.article,
+      example:
+        typeof item.example === 'string' && item.example.trim()
+          ? item.example.trim()
+          : fallback?.example,
+      exampleMeaning:
+        typeof item.exampleMeaning === 'string' && item.exampleMeaning.trim()
+          ? item.exampleMeaning.trim()
+          : fallback?.exampleMeaning,
     });
   }
 
-  if (translations.length < 3) {
-    throw new VisionError('La traducción llegó incompleta.');
+  if (byCode.size === 0) {
+    throw new VisionError('Translations arrived incomplete.');
   }
 
-  const sorted = langs
-    .map((code) => translations.find((item) => item.code === code))
+  const activeLangs = langs.length > 0 ? langs : ALL_LANGS;
+  const translations = ALL_LANGS.map((code) => byCode.get(code)).filter(
+    (item): item is Translation => Boolean(item),
+  );
+
+  const filteredTranslations = activeLangs
+    .map((code) => byCode.get(code))
     .filter((item): item is Translation => Boolean(item));
 
-  const confidence =
+  const confidenceRaw =
     typeof data.confidence === 'number'
       ? data.confidence
-      : Number.parseFloat(String(data.confidence ?? '0.85'));
+      : Number.parseFloat(String(data.confidence ?? '0.88'));
+  const confidence = Number.isFinite(confidenceRaw)
+    ? Math.min(1, Math.max(0, confidenceRaw))
+    : 0.88;
+
+  const category = catalogMatch?.category ?? coerceCategory(data.category);
+  const emoji =
+    typeof data.emoji === 'string' && data.emoji.trim().length > 0
+      ? data.emoji.trim().slice(0, 8)
+      : catalogMatch?.emoji ?? '✨';
+
+  const daily = getDailyWord();
+  const dailyMatch = evaluateDailyMatch(
+    objectName,
+    daily,
+    Boolean(data.dailyMatched),
+    typeof data.dailyReason === 'string' ? data.dailyReason : undefined,
+  );
+
+  const kamuQuip =
+    typeof data.kamuQuip === 'string' && data.kamuQuip.trim().length > 8
+      ? data.kamuQuip.trim()
+      : getPhotoQuip(objectName, category, dailyMatch.matched);
 
   return {
-    object: data.object.trim(),
-    emoji: typeof data.emoji === 'string' && data.emoji.length > 0 ? data.emoji.slice(0, 8) : '✨',
-    category: typeof data.category === 'string' && data.category.length > 0 ? data.category : 'Objeto',
-    confidence: Number.isFinite(confidence) ? Math.min(1, Math.max(0, confidence)) : 0.85,
-    translations: sorted.length >= 3 ? sorted : translations,
+    object: objectName,
+    emoji,
+    category,
+    confidence,
+    translations: filteredTranslations.length > 0 ? filteredTranslations : translations,
     source: 'ai',
+    kamuQuip,
+    dailyMatch,
   };
 }
 
 function statusMessage(status: number): string {
-  if (status === 429) return 'El servicio gratuito está saturado.';
-  if (status === 401 || status === 403) return 'El servicio gratuito rechazó la petición.';
-  if (status === 404) return 'El modelo gratuito no está disponible.';
-  if (status >= 500) return 'El servicio gratuito no responde.';
-  return `El servicio gratuito devolvió un error (${status}).`;
+  if (status === 429) return 'The free vision AI is currently busy (rate limit).';
+  if (status === 401 || status === 403) return 'The free vision endpoint rejected the request.';
+  if (status === 404) return 'The vision model is temporarily unavailable.';
+  if (status >= 500) return 'The free vision server did not respond.';
+  return `The vision service returned status ${status}.`;
 }
 
 async function requestModel(
@@ -177,8 +257,8 @@ async function requestModel(
             ],
           },
         ],
-        max_tokens: 2000,
-        temperature: 0.2,
+        max_tokens: 2200,
+        temperature: 0.25,
         response_format: { type: 'json_object' },
       }),
       signal: controller.signal,
@@ -194,16 +274,16 @@ async function requestModel(
 
     const content = json.choices?.[0]?.message?.content;
     if (typeof content !== 'string' || !content.trim()) {
-      throw new VisionError('La IA no devolvió ningún resultado.');
+      throw new VisionError('The vision AI returned an empty answer.');
     }
     return content;
   } catch (error) {
     if (external?.aborted) throw abortError();
     if ((error as Error).name === 'AbortError') {
-      throw new VisionError('La IA tardó demasiado en responder.');
+      throw new VisionError('The vision AI timed out.');
     }
     if (error instanceof VisionError) throw error;
-    throw new VisionError('No se pudo conectar con la IA gratuita.');
+    throw new VisionError('Could not reach the free vision AI endpoint.');
   } finally {
     clearTimeout(timer);
     external?.removeEventListener('abort', forwardAbort);
@@ -214,13 +294,14 @@ export async function identifyObject(
   scan: PendingScan,
   opts: IdentifyOptions = {},
 ): Promise<ScanResult> {
-  const langs = opts.langs?.length ? opts.langs : DEFAULT_LANGS;
+  const langs = opts.langs?.length ? opts.langs : ALL_LANGS;
 
-  if (opts.demo) {
-    return demoResult(langs);
+  if (opts.demo || opts.preferredObject) {
+    return demoResult(langs, opts.preferredObject);
   }
 
-  const prompt = buildPrompt(langs);
+  const daily = getDailyWord();
+  const prompt = buildPrompt(daily.object);
   const deadline = Date.now() + OVERALL_BUDGET_MS;
   let lastError: VisionError | null = null;
 
@@ -240,13 +321,29 @@ export async function identifyObject(
       return normalize(extractJson(text), langs);
     } catch (error) {
       if (opts.signal?.aborted) throw abortError();
-      lastError = error instanceof VisionError ? error : new VisionError('Error desconocido.');
+      lastError = error instanceof VisionError ? error : new VisionError('Unknown vision error.');
     }
   }
 
-  // Red de seguridad: la app nunca se queda sin respuesta.
+  const fallback = demoResult(langs);
   return {
-    ...demoResult(langs),
-    notice: `${lastError?.message ?? 'La IA gratuita no está disponible.'} Te mostramos un objeto del catálogo local para que puedas seguir practicando.`,
+    ...fallback,
+    notice: `${lastError?.message ?? 'Free cloud AI is busy.'} Switched to the built-in 5-language catalog so you can keep practicing without interruption.`,
   };
+}
+
+/** Re-filters a ScanResult's translations when the user toggles active languages. */
+export function filterScanTranslations(
+  result: ScanResult,
+  langs: readonly LangCode[],
+): Translation[] {
+  const active = langs.length > 0 ? langs : ALL_LANGS;
+  const catalogEntry = findCatalogEntry(result.object);
+  if (catalogEntry) {
+    return catalogTranslations(catalogEntry, active);
+  }
+  const filtered = active
+    .map((code) => result.translations.find((t) => t.code === code))
+    .filter((t): t is Translation => Boolean(t));
+  return filtered.length > 0 ? filtered : result.translations;
 }

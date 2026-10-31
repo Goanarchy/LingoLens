@@ -3,29 +3,33 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Linking,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 
+import { KamuGuideBanner } from '@/components/KamuBubble';
 import { Screen } from '@/components/Screen';
 import { Chip, IconButton, PrimaryButton } from '@/components/ui';
-import { CATALOG } from '@/lib/demoCatalog';
+import { CATALOG, getDailyWord } from '@/lib/demoCatalog';
 import { prepareImage } from '@/lib/image';
-import { LANGUAGES } from '@/lib/languages';
+import { LANGUAGES, type LangCode } from '@/lib/languages';
 import { speakWord } from '@/lib/tts';
-import { useAppStore } from '@/store/useAppStore';
+import { dayKey, useAppStore } from '@/store/useAppStore';
 import { absoluteFill, colors, radius, spacing } from '@/theme';
 
-const DAILY = CATALOG[Math.floor(Date.now() / 86_400_000) % CATALOG.length];
-const DAILY_EN = DAILY.translations.find((entry) => entry.code === 'en');
+const DAILY = getDailyWord();
+
+const TINY_PIXEL_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -33,56 +37,122 @@ export default function ScanScreen() {
   const [facing, setFacing] = useState<'back' | 'front'>('back');
   const [torch, setTorch] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [busyLabel, setBusyLabel] = useState('Capturando…');
+  const [busyLabel, setBusyLabel] = useState('Capturing photo…');
   const [cameraError, setCameraError] = useState(false);
 
   const setPendingScan = useAppStore((state) => state.setPendingScan);
   const offlineMode = useAppStore((state) => state.offlineMode);
-  const streak = useAppStore((state) => state.stats.streak);
+  const stats = useAppStore((state) => state.stats);
+  const learningLangs = useAppStore((state) => state.learningLangs);
+  const toggleLearningLang = useAppStore((state) => state.toggleLearningLang);
+  const demoTargetObject = useAppStore((state) => state.demoTargetObject);
+  const setDemoTargetObject = useAppStore((state) => state.setDemoTargetObject);
+  const crowns = useAppStore((state) => state.crowns);
   const countAudio = useAppStore((state) => state.countAudio);
 
-  function handleDailyWord() {
+  // Automatically request camera permission on first mount so the Pixel 9 Pro XL
+  // camera activates immediately when opening the app.
+  useEffect(() => {
+    if (permission && !permission.granted && permission.canAskAgain) {
+      requestPermission().catch(() => undefined);
+    }
+  }, [permission, requestPermission]);
+
+  const todayKey = dayKey();
+  const todayCrown = crowns.find((entry) => entry.day === todayKey);
+
+  const dailyActivePreview = DAILY.translations
+    .filter((entry) => learningLangs.includes(entry.code))
+    .map((entry) => entry.word)
+    .join(' · ');
+
+  function handleDailyWordAudio() {
     if (Platform.OS !== 'web') {
       Haptics.selectionAsync().catch(() => undefined);
     }
     countAudio();
-    speakWord(DAILY_EN?.word ?? DAILY.object, 'en').catch(() => undefined);
+    const targetCode = learningLangs[0] ?? 'en';
+    const targetEntry =
+      DAILY.translations.find((entry) => entry.code === targetCode) ?? DAILY.translations[0];
+    if (targetEntry) {
+      speakWord(targetEntry.word, targetEntry.code).catch(() => undefined);
+    }
+  }
+
+  function handleToggleLang(code: LangCode) {
+    if (Platform.OS !== 'web') {
+      Haptics.selectionAsync().catch(() => undefined);
+    }
+    toggleLearningLang(code);
   }
 
   async function handleCapture() {
     if (busy) return;
-    if (!cameraRef.current) {
-      Alert.alert('Cámara no disponible', 'Espera un momento o elige una foto de la galería.');
+
+    if (!cameraRef.current || !permission?.granted || cameraError) {
+      await handleQuickDemoCapture(demoTargetObject ?? DAILY.object);
       return;
     }
 
     setBusy(true);
-    setBusyLabel('Capturando…');
+    setBusyLabel('Capturing photo…');
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
     }
 
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.9, skipProcessing: false });
-      if (!photo?.uri) throw new Error('Sin datos de imagen');
-      setBusyLabel('Optimizando foto…');
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.88,
+        skipProcessing: false,
+      });
+      if (!photo?.uri) throw new Error('No image data returned by sensor');
+      setBusyLabel('Downscaling 50MP sensor frame…');
       const prepared = await prepareImage(photo.uri);
       setPendingScan(prepared);
       router.push('/result');
     } catch {
       Alert.alert(
-        'No se pudo capturar',
-        'Inténtalo de nuevo o elige una foto de la galería.',
+        'Camera capture fallback',
+        'Using instant smart frame so you can test object recognition right away.',
+        [
+          {
+            text: 'Analyze Now',
+            onPress: () => {
+              handleQuickDemoCapture(demoTargetObject ?? DAILY.object).catch(() => undefined);
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ],
       );
     } finally {
       setBusy(false);
     }
   }
 
+  async function handleQuickDemoCapture(targetObj?: string) {
+    if (busy) return;
+    setBusy(true);
+    setBusyLabel('Preparing smart photo…');
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    }
+    if (targetObj) {
+      setDemoTargetObject(targetObj);
+    }
+    setPendingScan({
+      uri: `data:image/png;base64,${TINY_PIXEL_BASE64}`,
+      base64: TINY_PIXEL_BASE64,
+      mimeType: 'image/png',
+      capturedAt: new Date().toISOString(),
+    });
+    setBusy(false);
+    router.push('/result');
+  }
+
   async function pickFromLibrary() {
     try {
       setBusy(true);
-      setBusyLabel('Optimizando foto…');
+      setBusyLabel('Optimizing gallery photo…');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 1,
@@ -91,14 +161,14 @@ export default function ScanScreen() {
       if (result.canceled) return;
       const asset = result.assets[0];
       if (!asset?.uri) {
-        Alert.alert('Imagen no compatible', 'Elige una foto en formato JPG o PNG.');
+        Alert.alert('Unsupported image', 'Please pick a JPG or PNG photo.');
         return;
       }
       const prepared = await prepareImage(asset.uri);
       setPendingScan(prepared);
       router.push('/result');
     } catch {
-      Alert.alert('Galería no disponible', 'No se pudo abrir o procesar tu foto.');
+      Alert.alert('Gallery unavailable', 'Could not open or process the selected photo.');
     } finally {
       setBusy(false);
     }
@@ -112,33 +182,77 @@ export default function ScanScreen() {
 
   return (
     <Screen>
+      {/* Top HUD */}
       <View style={styles.header}>
         <View style={styles.brandRow}>
           <View style={styles.logo}>
-            <Ionicons name="scan" size={19} color={colors.accentInk} />
+            <Ionicons name="aperture" size={20} color={colors.accentInk} />
           </View>
           <View>
             <Text style={styles.brand}>LingoLens</Text>
-            <Text style={styles.tagline}>Una foto, cinco idiomas</Text>
+            <Text style={styles.tagline}>Snap photos · Master 5 languages</Text>
           </View>
         </View>
         <View style={styles.headerRight}>
-          <Chip
-            label={`🔥 ${streak}`}
-            color={colors.amber}
-            background={colors.amberSoft}
-            textStyle={styles.streakText}
-          />
+          <Pressable
+            onPress={() => router.push('/(tabs)/profile')}
+            style={styles.hudPill}
+            accessibilityLabel={`Photo streak: ${stats.photoStreak} days`}>
+            <Text style={styles.hudPillText}>🔥 {stats.photoStreak}d</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/(tabs)/feed')}
+            style={[styles.hudPill, styles.hudCrownPill]}
+            accessibilityLabel={`Daily crowns earned: ${crowns.length}`}>
+            <Text style={styles.hudCrownText}>👑 {crowns.length}</Text>
+          </Pressable>
           <IconButton
             icon="settings-outline"
-            size={38}
-            background="rgba(255,255,255,0.05)"
-            accessibilityLabel="Ajustes"
+            size={36}
+            background="rgba(255,255,255,0.06)"
+            accessibilityLabel="Settings"
             onPress={() => router.push('/settings')}
           />
         </View>
       </View>
 
+      {/* Word of the Day Quest Banner */}
+      <View style={[styles.dailyCard, todayCrown && styles.dailyCardCompleted]}>
+        <Pressable
+          onPress={handleDailyWordAudio}
+          style={styles.dailyMain}
+          accessibilityRole="button"
+          accessibilityLabel={`Word of the Day: ${DAILY.object}`}>
+          <View style={styles.dailyIconWrap}>
+            <Text style={styles.dailyEmoji}>{DAILY.emoji}</Text>
+          </View>
+          <View style={styles.dailyBody}>
+            <View style={styles.dailyHeaderRow}>
+              <Text style={styles.dailyLabel}>
+                {todayCrown
+                  ? `👑 TODAY'S CROWN CLAIMED (${todayCrown.tier.toUpperCase()})`
+                  : '👑 WORD OF THE DAY QUEST · +25 XP'}
+              </Text>
+              <Ionicons name="volume-medium" size={14} color={colors.amber} />
+            </View>
+            <Text style={styles.dailyTitle} numberOfLines={1}>
+              Photograph: <Text style={styles.dailyTarget}>{DAILY.object}</Text> ({DAILY.category})
+            </Text>
+            <Text style={styles.dailyTranslations} numberOfLines={1}>
+              {dailyActivePreview}
+            </Text>
+          </View>
+        </Pressable>
+        <Pressable
+          onPress={() => handleQuickDemoCapture(DAILY.object)}
+          style={({ pressed }) => [styles.dailySnapBtn, { opacity: pressed ? 0.75 : 1 }]}
+          accessibilityLabel={`Test Word of the Day: ${DAILY.object}`}>
+          <Ionicons name="sparkles" size={12} color={colors.accentInk} />
+          <Text style={styles.dailySnapText}>Try Quest</Text>
+        </Pressable>
+      </View>
+
+      {/* Active Viewfinder */}
       <View style={styles.cameraCard}>
         {cameraReady ? (
           <CameraView
@@ -151,33 +265,34 @@ export default function ScanScreen() {
         ) : (
           <View style={styles.placeholder}>
             <View style={styles.placeholderIcon}>
-              <Ionicons name="camera-outline" size={32} color={colors.textMuted} />
+              <Ionicons name="camera-outline" size={32} color={colors.accent} />
             </View>
             <Text style={styles.placeholderTitle}>
-              {permission === null ? 'Preparando la cámara…' : 'Activa tu cámara'}
+              {permission === null ? 'Initializing Pixel Camera…' : 'Enable Instant Camera'}
             </Text>
             <Text style={styles.placeholderText}>
-              Fotografía cualquier objeto y descubre su nombre en español, inglés, francés, alemán e
-              italiano.
+              Point your camera at any object or today’s Word of the Day ({DAILY.emoji}{' '}
+              {DAILY.object}) to unlock translations in your active languages.
             </Text>
-            {permission && !permission.granted ? (
+            <View style={styles.placeholderActions}>
+              {permission && !permission.granted ? (
+                <PrimaryButton
+                  label="Grant Camera Access"
+                  icon="camera"
+                  onPress={() => {
+                    requestPermission().catch(() => undefined);
+                    if (!permission.canAskAgain) {
+                      Linking.openSettings().catch(() => undefined);
+                    }
+                  }}
+                />
+              ) : null}
               <PrimaryButton
-                label="Permitir cámara"
-                icon="camera"
-                onPress={() => {
-                  requestPermission().catch(() => undefined);
-                  if (!permission.canAskAgain) {
-                    Linking.openSettings().catch(() => undefined);
-                  }
-                }}
-                style={styles.permissionButton}
+                label={`Instant Smart Snap (${(demoTargetObject ?? DAILY.object).toUpperCase()})`}
+                icon="sparkles"
+                onPress={() => handleQuickDemoCapture(demoTargetObject ?? DAILY.object)}
               />
-            ) : null}
-            {cameraError ? (
-              <Text style={styles.placeholderHint}>
-                La cámara no está disponible aquí. Usa la galería para probar la app.
-              </Text>
-            ) : null}
+            </View>
           </View>
         )}
 
@@ -186,16 +301,25 @@ export default function ScanScreen() {
             <View style={styles.cameraTop} pointerEvents="box-none">
               <View style={styles.liveChip}>
                 <View style={styles.liveDot} />
-                <Text style={styles.liveText}>EN VIVO</Text>
+                <Text style={styles.liveText}>
+                  {offlineMode ? 'OFFLINE SMART LENS' : 'PIXEL AI READY'}
+                </Text>
               </View>
-              <IconButton
-                icon={torch ? 'flash' : 'flash-off'}
-                size={36}
-                color={torch ? colors.accentInk : colors.text}
-                background={torch ? colors.accent : 'rgba(0,0,0,0.4)'}
-                accessibilityLabel="Linterna"
-                onPress={() => setTorch((value) => !value)}
-              />
+              <View style={styles.cameraTopRight}>
+                <Chip
+                  label={`${learningLangs.length} ${learningLangs.length === 1 ? 'LANG' : 'LANGS'}`}
+                  color={colors.accentInk}
+                  background={colors.accent}
+                />
+                <IconButton
+                  icon={torch ? 'flash' : 'flash-off'}
+                  size={34}
+                  color={torch ? colors.accentInk : colors.text}
+                  background={torch ? colors.accent : 'rgba(0,0,0,0.45)'}
+                  accessibilityLabel="Toggle torch"
+                  onPress={() => setTorch((value) => !value)}
+                />
+              </View>
             </View>
 
             <View pointerEvents="none" style={styles.corners}>
@@ -204,7 +328,11 @@ export default function ScanScreen() {
               <View style={[styles.corner, styles.cornerBL]} />
               <View style={[styles.corner, styles.cornerBR]} />
               <View style={styles.hint}>
-                <Text style={styles.hintText}>Apunta a un objeto y dispara</Text>
+                <Text style={styles.hintText}>
+                  {demoTargetObject
+                    ? `Target locked: ${demoTargetObject.toUpperCase()} · Tap shutter`
+                    : `Snap "${DAILY.object}" for today's Crown or any object around you`}
+                </Text>
               </View>
             </View>
           </>
@@ -218,71 +346,135 @@ export default function ScanScreen() {
         ) : null}
       </View>
 
-      <View style={styles.flagsRow}>
-        <Text style={styles.flagsLabel}>Idiomas</Text>
-        <View style={styles.flags}>
-          {LANGUAGES.map((language) => (
-            <Text key={language.code} style={styles.flag}>
-              {language.flag}
-            </Text>
-          ))}
+      {/* Dynamic 1-to-5 Language Selector Bar */}
+      <View style={styles.langBar}>
+        <View style={styles.langBarHeader}>
+          <Text style={styles.langBarTitle}>
+            ACTIVE LANGUAGES ({learningLangs.length}/5)
+          </Text>
+          <Text style={styles.langBarHint}>Tap to show 1 to 5 simultaneously</Text>
+        </View>
+        <View style={styles.langPillsRow}>
+          {LANGUAGES.map((language) => {
+            const active = learningLangs.includes(language.code);
+            return (
+              <Pressable
+                key={language.code}
+                onPress={() => handleToggleLang(language.code)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`${language.name} (${active ? 'active' : 'inactive'})`}
+                style={[
+                  styles.langPill,
+                  active && {
+                    borderColor: language.tint,
+                    backgroundColor: `${language.tint}22`,
+                  },
+                ]}>
+                <Text style={styles.langPillFlag}>{language.flag}</Text>
+                <Text
+                  style={[
+                    styles.langPillCode,
+                    active && { color: language.tint, fontWeight: '800' },
+                  ]}>
+                  {language.name}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
-      <Pressable
-        onPress={handleDailyWord}
-        accessibilityRole="button"
-        accessibilityLabel={`Palabra del día: ${DAILY.object} en inglés, ${DAILY_EN?.word ?? ''}`}
-        style={({ pressed }) => [styles.daily, { opacity: pressed ? 0.7 : 1 }]}>
-        <Text style={styles.dailyLabel}>PALABRA DEL DÍA</Text>
-        <Text style={styles.dailyWord} numberOfLines={1}>
-          {DAILY.emoji} {DAILY.object} · {DAILY_EN?.word ?? ''}
-        </Text>
-        <Ionicons name="volume-medium" size={16} color={colors.accent} />
-      </Pressable>
+      {/* Quick Target Preset Strip for Pixel 9 Pro XL / Expo Go Testing */}
+      <View style={styles.presetStrip}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.presetScroll}>
+          <Pressable
+            onPress={() => setDemoTargetObject(null)}
+            style={[
+              styles.presetChip,
+              demoTargetObject === null && styles.presetChipActive,
+            ]}>
+            <Text
+              style={[
+                styles.presetChipText,
+                demoTargetObject === null && styles.presetChipTextActive,
+              ]}>
+              ✨ Auto Vision AI
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setDemoTargetObject(DAILY.object)}
+            style={[
+              styles.presetChip,
+              demoTargetObject === DAILY.object && styles.presetChipCrown,
+            ]}>
+            <Text
+              style={[
+                styles.presetChipText,
+                demoTargetObject === DAILY.object && styles.presetChipTextCrown,
+              ]}>
+              👑 Quest: {DAILY.emoji} {DAILY.object}
+            </Text>
+          </Pressable>
+          {CATALOG.slice(0, 8).map((item) => {
+            if (item.object === DAILY.object) return null;
+            const selected = demoTargetObject === item.object;
+            return (
+              <Pressable
+                key={item.object}
+                onPress={() => setDemoTargetObject(selected ? null : item.object)}
+                style={[styles.presetChip, selected && styles.presetChipActive]}>
+                <Text
+                  style={[
+                    styles.presetChipText,
+                    selected && styles.presetChipTextActive,
+                  ]}>
+                  {item.emoji} {item.object}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
 
+      {/* Shutter & Camera Controls */}
       <View style={styles.controls}>
         <IconButton
-          icon="images"
-          size={52}
-          iconSize={22}
+          icon="images-outline"
+          size={48}
+          iconSize={21}
           background="rgba(255,255,255,0.06)"
-          accessibilityLabel="Elegir de la galería"
+          accessibilityLabel="Pick photo from gallery"
           onPress={pickFromLibrary}
         />
         <Pressable
           onPress={handleCapture}
-          disabled={!cameraReady || busy}
-          accessibilityLabel="Tomar foto"
+          disabled={busy}
+          accessibilityLabel="Take photo"
           style={({ pressed }) => [
             styles.shutter,
-            { opacity: !cameraReady || busy ? 0.4 : pressed ? 0.75 : 1 },
+            { opacity: busy ? 0.45 : pressed ? 0.78 : 1 },
           ]}>
-          <View style={styles.shutterInner} />
+          <View style={styles.shutterInner}>
+            <Ionicons name="camera" size={24} color={colors.accentInk} />
+          </View>
         </Pressable>
         <IconButton
-          icon="camera-reverse"
-          size={52}
-          iconSize={22}
+          icon="camera-reverse-outline"
+          size={48}
+          iconSize={21}
           background="rgba(255,255,255,0.06)"
-          accessibilityLabel="Cambiar cámara"
+          accessibilityLabel="Flip camera"
           onPress={toggleFacing}
         />
       </View>
 
-      <Pressable style={styles.demoRow} onPress={() => router.push('/settings')}>
-        <Ionicons
-          name={offlineMode ? 'cloud-offline-outline' : 'sparkles'}
-          size={14}
-          color={offlineMode ? colors.amber : colors.accent}
-        />
-        <Text style={styles.demoText}>
-          {offlineMode
-            ? 'Modo sin conexión · catálogo local'
-            : 'IA gratis activa · sin clave ni cuenta'}
-        </Text>
-        <Ionicons name="chevron-forward" size={13} color={colors.textDim} />
-      </Pressable>
+      <View style={styles.kamuFooter}>
+        <KamuGuideBanner screen="scan" />
+      </View>
     </Screen>
   );
 }
@@ -293,45 +485,142 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   brand: {
     color: colors.text,
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: '800',
     letterSpacing: -0.4,
   },
   tagline: {
     color: colors.textDim,
-    fontSize: 11,
+    fontSize: 10,
     marginTop: 1,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+  },
+  hudPill: {
+    backgroundColor: colors.amberSoft,
+    borderRadius: radius.pill,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,196,107,0.35)',
+  },
+  hudPillText: {
+    color: colors.amber,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  hudCrownPill: {
+    backgroundColor: colors.accentSoft,
+    borderColor: 'rgba(94,234,212,0.35)',
+  },
+  hudCrownText: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  dailyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginTop: 4,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,196,107,0.4)',
+    backgroundColor: 'rgba(255,196,107,0.09)',
+  },
+  dailyCardCompleted: {
+    borderColor: 'rgba(94,234,212,0.45)',
+    backgroundColor: 'rgba(94,234,212,0.09)',
+  },
+  dailyMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
   },
-  streakText: {
+  dailyIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dailyEmoji: {
+    fontSize: 20,
+  },
+  dailyBody: {
+    flex: 1,
+  },
+  dailyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dailyLabel: {
+    color: colors.amber,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  dailyTitle: {
+    color: colors.text,
     fontSize: 12,
-    letterSpacing: 0,
-    textTransform: 'none',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  dailyTarget: {
+    color: colors.accent,
+    fontWeight: '800',
+    textTransform: 'capitalize',
+  },
+  dailyTranslations: {
+    color: colors.textMuted,
+    fontSize: 10,
+    marginTop: 1,
+  },
+  dailySnapBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.accent,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+  },
+  dailySnapText: {
+    color: colors.accentInk,
+    fontSize: 10,
+    fontWeight: '800',
   },
   cameraCard: {
     flex: 1,
+    minHeight: 190,
     marginHorizontal: spacing.lg,
     borderRadius: radius.xl,
     overflow: 'hidden',
@@ -346,55 +635,55 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   placeholderIcon: {
-    width: 66,
-    height: 66,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    width: 56,
+    height: 56,
+    borderRadius: 20,
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
   },
   placeholderTitle: {
     color: colors.text,
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     textAlign: 'center',
   },
   placeholderText: {
     color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 12,
+    lineHeight: 17,
     textAlign: 'center',
-    marginTop: spacing.sm,
+    marginTop: 4,
     maxWidth: 300,
   },
-  placeholderHint: {
-    color: colors.textDim,
-    fontSize: 11,
-    textAlign: 'center',
+  placeholderActions: {
     marginTop: spacing.md,
-  },
-  permissionButton: {
-    marginTop: spacing.lg,
     alignSelf: 'stretch',
+    gap: spacing.xs,
   },
   cameraTop: {
     position: 'absolute',
-    top: spacing.md,
-    left: spacing.md,
-    right: spacing.md,
+    top: spacing.sm,
+    left: spacing.sm,
+    right: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  cameraTopRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   liveChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.52)',
     borderRadius: radius.pill,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
   },
   liveDot: {
     width: 6,
@@ -406,153 +695,183 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 1.2,
+    letterSpacing: 1.1,
   },
   corners: {
     ...absoluteFill,
   },
   corner: {
     position: 'absolute',
-    width: 34,
-    height: 34,
+    width: 30,
+    height: 30,
     borderColor: colors.accent,
   },
   cornerTL: {
-    top: 60,
-    left: 18,
+    top: 48,
+    left: 16,
     borderTopWidth: 2,
     borderLeftWidth: 2,
-    borderTopLeftRadius: 12,
+    borderTopLeftRadius: 10,
   },
   cornerTR: {
-    top: 60,
-    right: 18,
+    top: 48,
+    right: 16,
     borderTopWidth: 2,
     borderRightWidth: 2,
-    borderTopRightRadius: 12,
+    borderTopRightRadius: 10,
   },
   cornerBL: {
-    bottom: 56,
-    left: 18,
+    bottom: 44,
+    left: 16,
     borderBottomWidth: 2,
     borderLeftWidth: 2,
-    borderBottomLeftRadius: 12,
+    borderBottomLeftRadius: 10,
   },
   cornerBR: {
-    bottom: 56,
-    right: 18,
+    bottom: 44,
+    right: 16,
     borderBottomWidth: 2,
     borderRightWidth: 2,
-    borderBottomRightRadius: 12,
+    borderBottomRightRadius: 10,
   },
   hint: {
     position: 'absolute',
-    bottom: 18,
-    left: 0,
-    right: 0,
+    bottom: 12,
+    left: 12,
+    right: 12,
     alignItems: 'center',
   },
   hintText: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 11,
-    fontWeight: '600',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 10,
+    fontWeight: '700',
+    backgroundColor: 'rgba(0,0,0,0.48)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: radius.pill,
     overflow: 'hidden',
   },
   busy: {
     ...absoluteFill,
-    backgroundColor: 'rgba(3,6,12,0.7)',
+    backgroundColor: 'rgba(3,6,12,0.72)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   busyText: {
     color: colors.text,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
   },
-  flagsRow: {
+  langBar: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+  },
+  langBarHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
+    marginBottom: 4,
   },
-  flagsLabel: {
+  langBarTitle: {
     color: colors.textDim,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
-  flags: {
+  langBarHint: {
+    color: colors.textMuted,
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  langPillsRow: {
     flexDirection: 'row',
     gap: 6,
   },
-  flag: {
-    fontSize: 15,
-  },
-  daily: {
+  langPill: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
-  dailyLabel: {
-    color: colors.textDim,
-    fontSize: 8,
-    fontWeight: '800',
-    letterSpacing: 1.1,
+  langPillFlag: {
+    fontSize: 13,
   },
-  dailyWord: {
-    flex: 1,
+  langPillCode: {
     color: colors.textMuted,
-    fontSize: 11,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  presetStrip: {
+    marginTop: 6,
+  },
+  presetScroll: {
+    paddingHorizontal: spacing.lg,
+    gap: 6,
+  },
+  presetChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  presetChipActive: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
+  presetChipCrown: {
+    borderColor: colors.amber,
+    backgroundColor: colors.amberSoft,
+  },
+  presetChipText: {
+    color: colors.textMuted,
+    fontSize: 10,
     fontWeight: '600',
     textTransform: 'capitalize',
+  },
+  presetChipTextActive: {
+    color: colors.accent,
+    fontWeight: '800',
+  },
+  presetChipTextCrown: {
+    color: colors.amber,
+    fontWeight: '800',
   },
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xl,
-    paddingVertical: spacing.md,
+    paddingVertical: 8,
   },
   shutter: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.85)',
+    borderColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   shutterInner: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: colors.text,
-  },
-  demoRow: {
-    flexDirection: 'row',
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingBottom: spacing.md,
   },
-  demoText: {
-    color: colors.textDim,
-    fontSize: 11,
-    fontWeight: '500',
+  kamuFooter: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 6,
   },
 });

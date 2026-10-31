@@ -1,6 +1,73 @@
 import { CATALOG } from '@/lib/demoCatalog';
 import { DEFAULT_LANGS } from '@/lib/languages';
-import type { Post } from '@/lib/types';
+import type { Post, ReactionKind } from '@/lib/types';
+
+export type MeritRival = {
+  id: string;
+  name: string;
+  initials: string;
+  color: string;
+  photoStreak: number;
+  crowns: number;
+  xp: number;
+  rankName: string;
+  rankEmoji: string;
+  specialty: string;
+};
+
+/**
+ * Hall-of-Fame peers displayed on the Merit Social Leaderboard alongside the user.
+ */
+export const MERIT_RIVALS: MeritRival[] = [
+  {
+    id: 'rival-hana',
+    name: 'Hana Takahashi',
+    initials: 'HT',
+    color: '#FFD700',
+    photoStreak: 23,
+    crowns: 19,
+    xp: 3480,
+    rankName: 'Legend',
+    rankEmoji: '👑',
+    specialty: '3-Week Dynasty · Tokyo & Madrid street shots',
+  },
+  {
+    id: 'rival-aarav',
+    name: 'Aarav Sharma',
+    initials: 'AS',
+    color: '#FF9F5A',
+    photoStreak: 16,
+    crowns: 12,
+    xp: 2190,
+    rankName: 'Ambassador',
+    rankEmoji: '🏛️',
+    specialty: '2-Week Prism Winner · Hindi & Mandarin pro',
+  },
+  {
+    id: 'rival-lucia',
+    name: 'Lucía Mendoza',
+    initials: 'LM',
+    color: '#8CFFB8',
+    photoStreak: 9,
+    crowns: 7,
+    xp: 1340,
+    rankName: 'Polyglot',
+    rankEmoji: '🌍',
+    specialty: '1-Week Crown Holder · Daily café hunter',
+  },
+  {
+    id: 'rival-mei',
+    name: 'Mei Lin',
+    initials: 'ML',
+    color: '#FF8AD1',
+    photoStreak: 5,
+    crowns: 4,
+    xp: 780,
+    rankName: 'Linguist',
+    rankEmoji: '📚',
+    specialty: 'Five-script pronunciation ace',
+  },
+];
 
 type SeedPost = {
   object: string;
@@ -10,62 +77,83 @@ type SeedPost = {
   likes: number;
   minutesAgo: number;
   caption: string;
+  authorStreak: number;
+  authorCrowns: number;
+  authorRank: string;
+  dailyCatch: boolean;
+  reactions: Record<ReactionKind, number>;
 };
 
 const SEEDS: SeedPost[] = [
   {
-    object: 'manzana',
-    author: 'Lucía',
-    initials: 'LU',
-    color: '#FFC46B',
-    likes: 42,
-    minutesAgo: 8,
-    caption: 'Mi primer descubrimiento del día 🍎',
+    object: 'coffee',
+    author: 'Hana Takahashi',
+    initials: 'HT',
+    color: '#FFD700',
+    likes: 58,
+    minutesAgo: 9,
+    caption: 'Day 23 of my 3-Week Dynasty streak! Morning espresso nailed in all 5 scripts ☕👑',
+    authorStreak: 23,
+    authorCrowns: 19,
+    authorRank: '👑 Legend',
+    dailyCatch: true,
+    reactions: { fire: 31, idea: 14, crown: 22 },
   },
   {
-    object: 'perro',
-    author: 'Mateo',
-    initials: 'MA',
+    object: 'apple',
+    author: 'Aarav Sharma',
+    initials: 'AS',
+    color: '#FF9F5A',
+    likes: 41,
+    minutesAgo: 28,
+    caption: 'Caught today’s Word of the Day at the market! Passed Hindi & Japanese pronunciation on attempt #1 🍎',
+    authorStreak: 16,
+    authorCrowns: 12,
+    authorRank: '🏛️ Ambassador',
+    dailyCatch: true,
+    reactions: { fire: 19, idea: 11, crown: 15 },
+  },
+  {
+    object: 'cat',
+    author: 'Lucía Mendoza',
+    initials: 'LM',
     color: '#8CFFB8',
-    likes: 31,
-    minutesAgo: 26,
-    caption: 'Encontré a este señor en el parque 🐶',
+    likes: 34,
+    minutesAgo: 54,
+    caption: 'Just unlocked my Week 1 Bronze Lens Crown with this sleepy street cat 🐱🔥',
+    authorStreak: 9,
+    authorCrowns: 7,
+    authorRank: '🌍 Polyglot',
+    dailyCatch: false,
+    reactions: { fire: 24, idea: 8, crown: 9 },
   },
   {
-    object: 'flor',
-    author: 'Sofía',
-    initials: 'SO',
+    object: 'book',
+    author: 'Mei Lin',
+    initials: 'ML',
     color: '#FF8AD1',
-    likes: 27,
-    minutesAgo: 55,
-    caption: 'Primavera en cinco idiomas 🌸',
+    likes: 22,
+    minutesAgo: 96,
+    caption: 'Comparing Kanji 本 and Mandarin 书 side by side—love how visual scripts connect 📚',
+    authorStreak: 5,
+    authorCrowns: 4,
+    authorRank: '📚 Linguist',
+    dailyCatch: false,
+    reactions: { fire: 12, idea: 16, crown: 5 },
   },
   {
-    object: 'café',
-    author: 'Diego',
-    initials: 'DI',
-    color: '#9B8CFF',
-    likes: 19,
-    minutesAgo: 92,
-    caption: 'El café sabe mejor cuando lo pides bien ☕',
-  },
-  {
-    object: 'ventana',
-    author: 'Aitana',
-    initials: 'AI',
+    object: 'flower',
+    author: 'Mateo Rivera',
+    initials: 'MR',
     color: '#6EE7F9',
-    likes: 12,
-    minutesAgo: 140,
-    caption: 'Aprendiendo desde casa 🪟',
-  },
-  {
-    object: 'libro',
-    author: 'Nicolás',
-    initials: 'NI',
-    color: '#8AB4FF',
-    likes: 9,
-    minutesAgo: 220,
-    caption: 'Un libro, cinco formas de llamarlo 📚',
+    likes: 18,
+    minutesAgo: 150,
+    caption: 'Afternoon walk capture: 花 (hana / huā) and फूल (phūl) in one shot 🌸',
+    authorStreak: 4,
+    authorCrowns: 2,
+    authorRank: '✈️ Traveler',
+    dailyCatch: false,
+    reactions: { fire: 9, idea: 7, crown: 4 },
   },
 ];
 
@@ -87,6 +175,12 @@ export function seedPosts(): Post[] {
       mine: false,
       caption: seed.caption,
       createdAt: new Date(now - seed.minutesAgo * 60_000).toISOString(),
+      authorStreak: seed.authorStreak,
+      authorCrowns: seed.authorCrowns,
+      authorRank: seed.authorRank,
+      dailyCatch: seed.dailyCatch,
+      reactions: { ...seed.reactions },
+      myReactions: [],
     };
   });
 }

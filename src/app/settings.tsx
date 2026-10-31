@@ -27,14 +27,17 @@ import { colors, radius, spacing } from '@/theme';
 const VOICE_SAMPLE: Record<LangCode, string> = {
   es: 'manzana',
   en: 'apple',
-  fr: 'pomme',
-  de: 'Apfel',
-  it: 'mela',
+  ja: 'りんご',
+  hi: 'सेब',
+  zh: '苹果',
 };
 
 export default function SettingsScreen() {
   const storedName = useAppStore((state) => state.displayName);
   const storedOffline = useAppStore((state) => state.offlineMode);
+  const learningLangs = useAppStore((state) => state.learningLangs);
+  const toggleLearningLang = useAppStore((state) => state.toggleLearningLang);
+  const setLearningLangs = useAppStore((state) => state.setLearningLangs);
   const setDisplayName = useAppStore((state) => state.setDisplayName);
   const setOfflineMode = useAppStore((state) => state.setOfflineMode);
   const resetProgress = useAppStore((state) => state.resetProgress);
@@ -81,16 +84,16 @@ export default function SettingsScreen() {
 
   function confirmReset() {
     Alert.alert(
-      'Borrar progreso',
-      'Se eliminarán tus palabras, XP, badges y publicaciones. Tu nombre se conserva.',
+      'Reset all progress',
+      'This will clear your saved words, XP, crowns, streak milestones, and community posts. Your display name will be kept.',
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Borrar todo',
+          text: 'Reset Everything',
           style: 'destructive',
           onPress: () => {
             resetProgress();
-            router.replace('/');
+            router.replace('/(tabs)');
           },
         },
       ],
@@ -105,7 +108,7 @@ export default function SettingsScreen() {
     <Screen>
       <View style={styles.header}>
         <IconButton icon="chevron-back" size={38} onPress={() => router.back()} />
-        <Text style={styles.headerTitle}>Ajustes</Text>
+        <Text style={styles.headerTitle}>Settings & Diagnostics</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -116,48 +119,105 @@ export default function SettingsScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
-          <SectionTitle>Perfil</SectionTitle>
+          <SectionTitle>Community Identity</SectionTitle>
           <Card style={styles.card}>
-            <Text style={styles.label}>Tu nombre en la comunidad</Text>
+            <Text style={styles.label}>Display Name on Merit Hub</Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="Explorador"
+              placeholder="Explorer"
               placeholderTextColor={colors.textDim}
               maxLength={24}
               style={styles.input}
               selectionColor={colors.accent}
             />
-            <Text style={styles.helper}>Sin cuentas ni contraseñas: todo queda en tu teléfono.</Text>
+            <Text style={styles.helper}>
+              No account or password required: all progress is stored locally on your Pixel 9 Pro
+              XL.
+            </Text>
           </Card>
 
-          <SectionTitle right={<Text style={styles.badge}>GRATIS · SIN CLAVE</Text>}>
-            Motor de IA
+          <SectionTitle
+            right={
+              <Text style={styles.badge}>
+                {learningLangs.length} OF 5 SELECTED
+              </Text>
+            }>
+            Dynamic Study Languages
+          </SectionTitle>
+          <Card style={styles.card}>
+            <Text style={styles.label}>Choose 1 to 5 simultaneous languages</Text>
+            <Text style={styles.helper}>
+              Every photo scan displays native script, romanization (Rōmaji, Transliteration,
+              Pinyin), phonetic guide, and Duolingo-style pronunciation test for your active
+              languages.
+            </Text>
+            <View style={styles.langWrap}>
+              {LANGUAGES.map((l) => {
+                const active = learningLangs.includes(l.code);
+                return (
+                  <Pressable
+                    key={l.code}
+                    onPress={() => toggleLearningLang(l.code)}
+                    style={[
+                      styles.langPill,
+                      active && {
+                        backgroundColor: `${l.tint}22`,
+                        borderColor: l.tint,
+                      },
+                    ]}>
+                    <Text style={styles.langPillFlag}>{l.flag}</Text>
+                    <Text
+                      style={[
+                        styles.langPillText,
+                        active && { color: l.tint, fontWeight: '800' },
+                      ]}>
+                      {l.name} ({l.native})
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <View style={styles.quickLangActions}>
+              <Pressable
+                onPress={() => setLearningLangs(['es', 'en', 'ja', 'hi', 'zh'])}
+                style={styles.quickLangBtn}>
+                <Text style={styles.quickLangBtnText}>Select All 5 Languages</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setLearningLangs(['es', 'en', 'ja'])}
+                style={styles.quickLangBtn}>
+                <Text style={styles.quickLangBtnText}>Select 3 (ES · EN · JA)</Text>
+              </Pressable>
+            </View>
+          </Card>
+
+          <SectionTitle right={<Text style={styles.badge}>PIXEL 9 PRO XL · KEYLESS</Text>}>
+            Vision AI & Offline Engine
           </SectionTitle>
           <Card style={styles.card}>
             <View style={styles.engineRow}>
               <View style={styles.engineDot} />
               <View style={styles.engineText}>
-                <Text style={styles.engineTitle}>IA gratuita conectada</Text>
+                <Text style={styles.engineTitle}>Hybrid Vision AI Connected</Text>
                 <Text style={styles.engineSub}>
-                  Qwen2.5-VL · OVHcloud AI Endpoints · sin registro
+                  Qwen2.5-VL · 50MP Sensor Downscaler (1024px) · Keyless
                 </Text>
               </View>
               <Ionicons name="shield-checkmark" size={18} color={colors.accent} />
             </View>
 
             <Text style={styles.helper}>
-              La app identifica objetos con modelos de visión abiertos y gratuitos. No necesitas API
-              key, cuenta ni tarjeta. Si el servicio gratuito está saturado, se prueba otro modelo
-              automáticamente y, como último recurso, se usa el catálogo local. La foto se envía al
-              servicio solo para identificarla; no se guarda en ningún servidor propio.
+              Photos from the Pixel 9 Pro XL 50MP camera are automatically resized to 1024px JPEG
+              for sub-second inference. If the keyless cloud model is busy or offline, LingoLens
+              seamlessly falls back to the built-in 24-object polyglot catalog.
             </Text>
 
             <View style={styles.switchRow}>
               <View style={styles.switchText}>
-                <Text style={styles.switchTitle}>Usar solo el catálogo local</Text>
+                <Text style={styles.switchTitle}>Offline Smart Catalog Mode</Text>
                 <Text style={styles.switchSub}>
-                  Sin internet. 18 objetos con audio y 5 idiomas.
+                  Zero network latency. 24 everyday objects with 5 scripts & native audio.
                 </Text>
               </View>
               <Switch
@@ -173,11 +233,11 @@ export default function SettingsScreen() {
             right={
               voices ? (
                 <Text style={[styles.badge, missingVoices > 0 && { color: colors.amber }]}>
-                  {missingVoices > 0 ? `${missingVoices} POR INSTALAR` : 'COMPLETAS'}
+                  {missingVoices > 0 ? `${missingVoices} TO INSTALL` : 'ALL INSTALLED'}
                 </Text>
               ) : undefined
             }>
-            Voces del dispositivo
+            Device TTS Voices (5 Languages)
           </SectionTitle>
           <Card style={styles.card}>
             {LANGUAGES.map((language) => {
@@ -186,9 +246,13 @@ export default function SettingsScreen() {
                 <View key={language.code} style={styles.languageRow}>
                   <Text style={styles.languageFlag}>{language.flag}</Text>
                   <View style={styles.languageText}>
-                    <Text style={styles.languageName}>{language.name}</Text>
+                    <Text style={styles.languageName}>
+                      {language.name} · {language.romanizationName ?? 'Latin Script'}
+                    </Text>
                     <Text style={styles.languageNative}>
-                      {installed === false ? 'Voz no instalada' : language.native}
+                      {installed === false
+                        ? 'System voice pack not detected (using fallback)'
+                        : `${language.native} · ${language.speech}`}
                     </Text>
                   </View>
                   <Pressable
@@ -211,7 +275,7 @@ export default function SettingsScreen() {
                         styles.testLabel,
                         testing === language.code && { color: colors.accentInk },
                       ]}>
-                      Probar
+                      Test
                     </Text>
                   </Pressable>
                 </View>
@@ -219,34 +283,47 @@ export default function SettingsScreen() {
             })}
 
             <Text style={styles.helper}>
-              El audio usa las voces de tu Pixel, sin costo. Si alguna falta, ábrela en los ajustes de
-              texto a voz e instala su paquete de idioma.
+              Audio uses your Google Pixel’s native Speech Services for Spanish, English, Japanese,
+              Hindi, and Mandarin.
             </Text>
 
             <Pressable onPress={openVoiceSettings} style={styles.linkRow}>
               <Ionicons name="settings-outline" size={14} color={colors.accent} />
-              <Text style={styles.linkText}>Abrir ajustes de voz del sistema</Text>
+              <Text style={styles.linkText}>Open Android Text-to-Speech Settings</Text>
             </Pressable>
           </Card>
 
-          <SectionTitle>Datos</SectionTitle>
+          <SectionTitle>Guide & Data</SectionTitle>
           <Card style={styles.card}>
-            <GhostButton label="Borrar progreso" icon="trash-outline" onPress={confirmReset} />
+            <GhostButton
+              label="Replay Kamu’s Interactive Welcome Tour"
+              icon="sparkles-outline"
+              onPress={() => router.push('/welcome')}
+            />
+            <View style={{ height: spacing.xs }} />
+            <GhostButton
+              label="Reset All Progress"
+              icon="trash-outline"
+              onPress={confirmReset}
+            />
             <Text style={styles.helper}>
-              Tus palabras, XP, badges y publicaciones se guardan solo en este dispositivo.
+              All vocabulary, crowns, streaks, and merit posts are persisted on this device.
             </Text>
           </Card>
 
           <View style={styles.about}>
-            <Text style={styles.aboutTitle}>LingoLens · v1.0.0</Text>
+            <Text style={styles.aboutTitle}>
+              LingoLens · v2.0.0 · Google Pixel 9 Pro XL Edition
+            </Text>
             <Text style={styles.aboutText}>
-              Una foto → el nombre del objeto en cinco idiomas, con pronunciación escrita y audio.
-              Sube de rango, gana badges y comparte tus descubrimientos.
+              Instant camera launch, 5-language native script & phonetic engine (ES · EN · JA · HI ·
+              ZH), Duolingo-style pronunciation coach, 1/2/3-week streak trophies, and Kamu the
+              prism chameleon.
             </Text>
           </View>
 
           <PrimaryButton
-            label={saved ? 'Ajustes guardados ✓' : 'Guardar ajustes'}
+            label={saved ? 'Settings Saved ✓' : 'Save Settings'}
             icon={saved ? undefined : 'checkmark'}
             onPress={handleSave}
             style={styles.saveButton}
@@ -308,6 +385,49 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 15,
     marginTop: spacing.xs,
+  },
+  langWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  langPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.cardSoft,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  langPillFlag: {
+    fontSize: 14,
+  },
+  langPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  quickLangActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: spacing.sm,
+  },
+  quickLangBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  quickLangBtnText: {
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: '700',
   },
   engineRow: {
     flexDirection: 'row',
